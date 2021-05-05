@@ -108,14 +108,44 @@ The pipeline requires a configured 'pipeline.yml' file. An example can be found 
 
     "<source_dir>/pipeline_DTU/pipeline_DTU/pipeline.yml"
 
+In order for the R scripts to work, correct naming convention must be used, and number
+and names of covariates must be provided in the config file, alongside whether the data
+is paired (on identifier [first input before '-']). 
 
 
 Input files
 ===========
 
-### <TO COMPLETE>: need info on design matrix, file naming conventions etc ###
+Files must be named using the following convention: (separated with '-')
 
+<source/identifier/cell_line> - <variable 1> - <(optional) variable 2> - <(replicate number>.bam
 
+(if no technical replicates then name all samples R0)
+
+e.g. for a pooled timecourse differentiation data comparing day 0 and day 10, one may use files such as:
+NPC-D00-R1.bam
+NPC-D00-R2.bam
+NPC-D10-R1.bam
+NPC-D10-R2.bam
+(i.e. technical / pooled replicates)
+
+in the config file you can also specify whether the data is to be paired on the identifier/cell_line, example names:
+NPC1-D00-R1.bam
+NPC1-D10-R1.bam
+NPC2-D00-R1.bam
+NPC2-D10-R1.bam
+(i.e. comparing different cell lines or states)
+
+whether 1 or 2 covariates are to be tested is also specified in the config file. examples:
+NPC-D00-treated-R1.bam
+NPC-D10-treated-R1.bam
+NPC-D00-control-R1.bam
+NPC-D10-control-R1.bam
+
+A design.tsv file must also be included within the working directory, and examples of single vs covariate design.tsv files
+can be found in:
+
+    "<source_dir>/pipeline_DTU/pipeline_DTU/example_design.tsv"
 
 Requirements
 ============
@@ -134,15 +164,9 @@ Input files in '.bam' format should be placed into an "input_assemble.dir".
 Pipeline output
 ===============
 
-.. Describe output files of the pipeline here
-
-
-
-Glossary
-========
-
-.. glossary::
-
+- pipeline_DTU will output quantification data from Salmon
+- a list of candidates which display DTU in one/multiple/all software packages
+    - alongside expression data for both retaining + spliced partners
 
 
 Code
