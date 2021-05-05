@@ -1,6 +1,6 @@
-#Pipeline DTU
+# Pipeline DTU
 
-##Usage
+## Usage
 
 To use pipeline_DTU to investigate DTU of utrons (DTUtrons) use one of the following commands:
 
@@ -12,13 +12,13 @@ To use pipeline_DTU to investigate DTU for whole transcripts use one of the foll
     "python <pipeline_location>/pipeline_DTU.py make DTU -v5" <-- in local interactive session
     "submit_pipeline <pipeline_location>/pipeline_DTU.py make DAS -v5" <-- in new session (background / non-interactive)
 
-##Configuration
+## Configuration
 
 The pipeline requires a configured 'pipeline.yml' file. An example can be found at:
 
     "<source_dir>/pipeline_DTU/pipeline_DTU/pipeline.yml"
 
-##Requirements
+## Requirements
 
 The pipeline requires the results from:
 
