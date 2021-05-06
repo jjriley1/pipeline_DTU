@@ -33,7 +33,7 @@ The pipeline requires the results from:
   * Importantly, information in the "dtu" section will need to be modified on a use-by-use basis
   * Including details on:
     * Whether data points are paired / unpaired
-    * Whether analysis is on one (univariate analysis) or two (covariate analysis)
+    * Whether DTU is based upon effect of one variable (univariate analysis) or two (covariate analysis)
     * The design formula that the linear model will be based around
     * Significance thresholds (adjusted p-values and log2fold change thresholds)
 * Design matrix must be present in the working directory
