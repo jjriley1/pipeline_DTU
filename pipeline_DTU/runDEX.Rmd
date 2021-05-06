@@ -1,0 +1,11 @@
+---
+title: "runDEX"
+output: html_notebook
+---
+
+
+
+```{r}
+print(getwd())
+```
+

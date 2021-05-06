@@ -69,6 +69,7 @@ salmon:
     indexoptions: -k 31
     # Options for quantifying samples
     quantoptions: --validateMappings --rangeFactorizationBins 4
+    num_bootstraps: 100 
 
 ###############################################################
 # DTU configuration
@@ -76,4 +77,4 @@ salmon:
 
 dtu: 
     #location of design matrix
-    design_tsv_location: <shared_location>/DTUtrons/design.tsv 
+    design_tsv_location: <shared_location>/DTU/design.tsv 
