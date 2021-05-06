@@ -186,6 +186,7 @@ from gffutils import DataIterator as DataIterator
 import sqlite3
 import subprocess
 import glob
+import csv
 from cgatcore import experiment as E
 import cgat.Sra as Sra
 from cgatcore import pipeline as P
@@ -748,19 +749,52 @@ def gtf_stop_codons(infile, gtf):
 ##### Determine how complex the #####
 #####   design matrix is, and   #####
 ##### execute neccessary script #####
-#####################################
+###################################################################################
+###   In order for results to be interactive, this part will generate a folder  ###
+### for each set of comparisons, and copy the Rmd into each of these folders so ### 
+###      that they can be interogated manually/individually. The data from      ###
+###          each of these will be compiled into a final output report.         ###
+###################################################################################
 
+@follows(gtf_stop_codons, mkdir("DTU.dir"))
+@transform("design.tsv", suffix("design.tsv"), "DTU.dir/comparisons_to_make.txt") 
+def analyseDesignMatrix(infile, outfile):
+    infile = open(infile)
+    design = csv.reader(infile, delimiter="\t")
+    outfile = open(outfile, "w")
+    
+    for row in design:
+        variables = len(row) - 1 
+        if(variables == 1):
+            folder_name = str(row[0] + "_vs_" + str(row[1]))
+            formula = "~var1"
+        elif(variables == 2):
+            covar1, covar2 = str(row[2]).split(':', 1)
+            folder_name = str(row[0] + "_vs_" + str(row[1])) + "_PLUS_" + covar1+"_vs_"+covar2
+            formula = "~var1 + var2 + var1:var2"
+        else:
+            raise valueError("design.tsv is not configured correctly, please refer to pipeline_DTU/example_design.tsv for comparison")
+
+        outfile.write(folder_name + "\t" + formula + "\n")
+
+        to_cluster=False
+        statement = """ mkdir DTU.dir/""" + folder_name + """ && echo \"""" + formula + """\" > DTU.dir/""" + folder_name + "/" + folder_name + """.info"""
+        os.system(statement)
+        
+    infile.close
+    outfile.close()
 
 
 #####################
 ##### run fxns ######
 #####################
 
-def DTUtrons(Assembly, AnnotateAssemblies, export, mergeAllQuants, CSVDBfiles, utrons_expression, identify_splice_sites, gtf_stop_codons):
+@follows(Assembly, AnnotateAssemblies, export, mergeAllQuants, CSVDBfiles, utrons_expression, identify_splice_sites, gtf_stop_codons)
+def DTUtrons():
     #decorate this with pipeline_utrons specific things
     pass
-
-def DTU(Assembly, AnnotateAssemblies, export, mergeAllQuants, CSVDBfiles, utrons_expression, identify_splice_sites, gtf_stop_codons):
+@follows(Assembly, AnnotateAssemblies, export, mergeAllQuants, CSVDBfiles, utrons_expression, identify_splice_sites, gtf_stop_codons)
+def DTU():
     #decorate this with DTU specific things
     pass
 
