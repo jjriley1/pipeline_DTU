@@ -394,7 +394,6 @@ def loadTranscriptClassification(infiles, outfile):
 
 ############################################
 ##### find_utrons from pipeline_utrons #####
-#####  slightly modified for use here  #####
 ############################################
 
 @follows(mkdir("utron_beds.dir"), classifyTranscripts)
