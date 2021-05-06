@@ -1,0 +1,25 @@
+###################################
+##### design.tsv file must be formatted with no header and starting from first line. 
+##### for standard comparison between two conditions in 1 variable column:
+###################################
+
+hESC	NPC			## In this setting, the pipeline would output DTU for 3
+hESC	HSC			## comparisons. In this example, hESCvsNPC, hESCvsHSC
+hESC	ONP			## and hESCvsONP. These would be output as 3 separate
+				## folders and compiled in the final output report. 
+
+###################################
+##### for designs where a covariate is to be used, specify this with X:Y for the covariate
+##### conditions that will be compared. Example here is mutant vs wildtype line, where 3 different
+##### mutations will be investigated 20q1, 20q2 and 20q3, compared with wildtype(wt):
+###################################
+
+hESC	NPC	wt:20q1		##
+hESC	HSC	wt:20q1		## This would produce 9 subfolders in the output which could
+hESC	ONP	wt:20q1		## be interogated individually. Although in the final report
+hESC	NPC	wt:20q2		## these will be compiled and compared.
+hESC	HSC	wt:20q2		##
+hESC	ONP	wt:20q2
+hESC	NPC	wt:20q3
+hESC	HSC	wt:20q3
+hESC	ONP	wt:20q3
