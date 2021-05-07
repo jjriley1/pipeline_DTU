@@ -23,3 +23,9 @@ hESC	ONP	wt:20q2
 hESC	NPC	wt:20q3
 hESC	HSC	wt:20q3
 hESC	ONP	wt:20q3
+
+###################################
+IMPORTANT: THE CHARACTERS USED HERE E.G. "hESC" 
+	   MUST MATCH EXACTLY (INCLUDING CASE)
+           THOSE IN THE FILE NAMES AT INPUT. 
+###################################	

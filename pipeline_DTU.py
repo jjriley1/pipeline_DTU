@@ -130,17 +130,17 @@ NPC-D10-R2.bam
 (i.e. technical / pooled replicates)
 
 in the config file you can also specify whether the data is to be paired on the identifier/cell_line, example names:
-NPC1-D00-R1.bam
-NPC1-D10-R1.bam
-NPC2-D00-R1.bam
-NPC2-D10-R1.bam
+NPC1-D00-R0.bam
+NPC1-D10-R0.bam
+NPC2-D00-R0.bam
+NPC2-D10-R0.bam
 (i.e. looking for DTU that is common between different cell lines or states)
 
 whether 1 or 2 covariates are to be tested is also specified in the config file. examples:
-NPC-D00-treated-R1.bam
-NPC-D10-treated-R1.bam
-NPC-D00-control-R1.bam
-NPC-D10-control-R1.bam
+NPC-D00-treated-R0.bam
+NPC-D10-treated-R0.bam
+NPC-D00-control-R0.bam
+NPC-D10-control-R0.bam
 
 A design.tsv file must also be included within the working directory, and examples of single vs covariate design.tsv files
 can be found in:
