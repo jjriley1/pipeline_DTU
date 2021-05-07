@@ -772,8 +772,9 @@ def analyseDesignMatrix(infile, outfile):
             folder_name = str(row[0] + "_vs_" + str(row[1]))
             info = "~var1"
             outfile.write(folder_name + "\n")
-            statement = (""" mkdir DTU.dir/""" + folder_name + """ && cp """ + Rmd_path + """* DTU.dir/""" + folder_name + """ && echo \"""" + info + """\" > DTU.dir/""" + folder_name + """.info &&""" + 
-                         """ cp DTU.dir/""" + folder_name + ".info DTU.dir/" + folder_name + "/" + folder_name + ".txt")
+            statement = (""" mkdir DTU.dir/""" + folder_name + """ && cp """ + Rmd_path + """runDEX.Rmd DTU.dir/""" + folder_name + """/runDEX_""" + folder_name + 
+                         """.Rmd && cp """ + Rmd_path + """runSwish.Rmd DTU.dir/""" + folder_name + """/runSwish_""" + folder_name + """.Rmd && echo \"""" + info +
+                         """\" > DTU.dir/""" + folder_name + """.info &&""" + """ cp DTU.dir/""" + folder_name + ".info DTU.dir/" + folder_name + "/" + folder_name + ".txt")
             os.system(statement)
 
         elif(variables == 2):
@@ -788,12 +789,15 @@ def analyseDesignMatrix(infile, outfile):
             outfile.write(folder_name_A + "\n")
             outfile.write(folder_name_B + "\n")
             outfile.write(folder_name_C + "\n")
-            statement = (""" mkdir DTU.dir/""" + folder_name_A + """ && cp """ + Rmd_path + """* DTU.dir/""" + folder_name_A + """ && echo \"""" + info_A + """\" > DTU.dir/""" + folder_name_A + """.info &&""" + 
-                         """ cp DTU.dir/""" + folder_name_A + ".info DTU.dir/" + folder_name_A + "/" + folder_name_A + ".txt &&" + 
-                         """ mkdir DTU.dir/""" + folder_name_B + """ && cp """ + Rmd_path + """* DTU.dir/""" + folder_name_B + """ && echo \"""" + info_B + """\" > DTU.dir/""" + folder_name_B + """.info &&""" + 
-                         """ cp DTU.dir/""" + folder_name_B + ".info DTU.dir/" + folder_name_B + "/" + folder_name_B + ".txt &&" + 
-                         """ mkdir DTU.dir/""" + folder_name_C + """ && cp """ + Rmd_path + """* DTU.dir/""" + folder_name_C + """ && echo \"""" + info_C + """\" > DTU.dir/""" + folder_name_C + """.info""" +
-                         """ cp DTU.dir/""" + folder_name_C + ".info DTU.dir/" + folder_name_C + "/" + folder_name_C + ".txt")
+            statement = (""" mkdir DTU.dir/""" + folder_name_A + """ && cp """ + Rmd_path + """runDEX.Rmd DTU.dir/""" + folder_name_A + """/runDEX_""" + folder_name_A + 
+                         """.Rmd && cp """ + Rmd_path + """runSwish.Rmd DTU.dir/""" + folder_name_A + """/runSwish_""" + folder_name_A + """.Rmd && echo \"""" + info_A +
+                         """\" > DTU.dir/""" + folder_name_A + """.info &&""" + """ cp DTU.dir/""" + folder_name_A + ".info DTU.dir/" + folder_name_A + "/" + folder_name_A + ".txt &&" + 
+                         """ mkdir DTU.dir/""" + folder_name_B + """ && cp """ + Rmd_path + """runDEX.Rmd DTU.dir/""" + folder_name_B + """/runDEX_""" + folder_name_B + 
+                         """.Rmd && cp """ + Rmd_path + """runSwish.Rmd DTU.dir/""" + folder_name_B + """/runSwish_""" + folder_name_B + """.Rmd && echo \"""" + info_B +
+                         """\" > DTU.dir/""" + folder_name_B + """.info &&""" + """ cp DTU.dir/""" + folder_name_B + ".info DTU.dir/" + folder_name_B + "/" + folder_name_B + ".txt &&" + 
+                         """ mkdir DTU.dir/""" + folder_name_C + """ && cp """ + Rmd_path + """runDEX.Rmd DTU.dir/""" + folder_name_C + """/runDEX_""" + folder_name_C + 
+                         """.Rmd && cp """ + Rmd_path + """runSwish.Rmd DTU.dir/""" + folder_name_C + """/runSwish_""" + folder_name_C + """.Rmd && echo \"""" + info_C +
+                         """\" > DTU.dir/""" + folder_name_C + """.info &&""" + """ cp DTU.dir/""" + folder_name_C + ".info DTU.dir/" + folder_name_C + "/" + folder_name_C + ".txt")
             os.system(statement)
 
         else:
