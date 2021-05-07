@@ -142,7 +142,7 @@ NPC-D10-treated-R0.bam
 NPC-D00-control-R0.bam
 NPC-D10-control-R0.bam
 
-A design.tsv file must also be included within the working directory, and examples of single vs covariate design.tsv files
+A design.tsv file must also be included within the working directory, and examples of univariate vs covariate design.tsv files
 can be found in:
 
     "<source_dir>/pipeline_DTU/pipeline_DTU/example_design.tsv"
@@ -762,25 +762,43 @@ def analyseDesignMatrix(infile, outfile):
     infile = open(infile)
     design = csv.reader(infile, delimiter="\t")
     outfile = open(outfile, "w")
-    
+    Rmd_path = "/shared/sudlab1/General/projects/stem_utrons/pipelines/pipeline_DTU/pipeline_DTU/DTU_scripts/"
+    to_cluster=False
+
+
     for row in design:
         variables = len(row) - 1 
         if(variables == 1):
             folder_name = str(row[0] + "_vs_" + str(row[1]))
-            formula = "~var1"
+            info = "~var1"
+            outfile.write(folder_name + "\n")
+            statement = (""" mkdir DTU.dir/""" + folder_name + """ && cp """ + Rmd_path + """* DTU.dir/""" + folder_name + """ && echo \"""" + info + """\" > DTU.dir/""" + folder_name + """.info &&""" + 
+                         """ cp DTU.dir/""" + folder_name + ".info DTU.dir/" + folder_name + "/" + folder_name + ".txt")
+            os.system(statement)
+
         elif(variables == 2):
             covar1, covar2 = str(row[2]).split(':', 1)
-            folder_name = str(row[0] + "_vs_" + str(row[1])) + "_PLUS_" + covar1+"_vs_"+covar2
-            formula = "~var1 + var2 + var1:var2"
+            folder_name_A = str(row[0] + "_vs_" + str(row[1])) + "_in_" + covar1
+            #create info. line 1 = formulae. line 2 = var2 to filter on (e.g. wt vs mutant or treated vs untreated)
+            info_A = "~var1\n" + covar1       
+            folder_name_B = str(row[0] + "_vs_" + str(row[1])) + "_in_" + covar2
+            info_B = "~var1\n" + covar2         
+            folder_name_C = str(row[0] + "_vs_" + str(row[1])) + "_in_" + covar1+"_vs_"+covar2
+            info_C = "~var1 + var2 + var1:var2\n" + covar1 + "," + covar2
+            outfile.write(folder_name_A + "\n")
+            outfile.write(folder_name_B + "\n")
+            outfile.write(folder_name_C + "\n")
+            statement = (""" mkdir DTU.dir/""" + folder_name_A + """ && cp """ + Rmd_path + """* DTU.dir/""" + folder_name_A + """ && echo \"""" + info_A + """\" > DTU.dir/""" + folder_name_A + """.info &&""" + 
+                         """ cp DTU.dir/""" + folder_name_A + ".info DTU.dir/" + folder_name_A + "/" + folder_name_A + ".txt &&" + 
+                         """ mkdir DTU.dir/""" + folder_name_B + """ && cp """ + Rmd_path + """* DTU.dir/""" + folder_name_B + """ && echo \"""" + info_B + """\" > DTU.dir/""" + folder_name_B + """.info &&""" + 
+                         """ cp DTU.dir/""" + folder_name_B + ".info DTU.dir/" + folder_name_B + "/" + folder_name_B + ".txt &&" + 
+                         """ mkdir DTU.dir/""" + folder_name_C + """ && cp """ + Rmd_path + """* DTU.dir/""" + folder_name_C + """ && echo \"""" + info_C + """\" > DTU.dir/""" + folder_name_C + """.info""" +
+                         """ cp DTU.dir/""" + folder_name_C + ".info DTU.dir/" + folder_name_C + "/" + folder_name_C + ".txt")
+            os.system(statement)
+
         else:
             raise valueError("design.tsv is not configured correctly, please refer to pipeline_DTU/example_design.tsv for comparison")
 
-        outfile.write(folder_name + "\t" + formula + "\n")
-
-        to_cluster=False
-        statement = """ mkdir DTU.dir/""" + folder_name + """ && echo \"""" + formula + """\" > DTU.dir/""" + folder_name + "/" + folder_name + """.info"""
-        os.system(statement)
-        
     infile.close
     outfile.close()
 

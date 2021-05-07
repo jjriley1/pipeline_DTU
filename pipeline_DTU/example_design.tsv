@@ -19,13 +19,13 @@ hESC	HSC	wt:20q1		## This would produce 9 subfolders in the output which could
 hESC	ONP	wt:20q1		## be interogated individually. Although in the final report
 hESC	NPC	wt:20q2		## these will be compiled and compared.
 hESC	HSC	wt:20q2		##
-hESC	ONP	wt:20q2
-hESC	NPC	wt:20q3
-hESC	HSC	wt:20q3
-hESC	ONP	wt:20q3
+hESC	ONP	wt:20q2		## Each of these subfolders would comprise 3 sets of
+hESC	NPC	wt:20q3		## analyses. E.g. "hESC NPC wt:20q1" would produce hESC_vs_NPC_in_wt,
+hESC	HSC	wt:20q3		## hESC_vs_NPC_in_20q1, and hESC_vs_NPC_in_wt_vs_20q1
+hESC	ONP	wt:20q3		##
 
-###################################
+###############################################
 IMPORTANT: THE CHARACTERS USED HERE E.G. "hESC" 
 	   MUST MATCH EXACTLY (INCLUDING CASE)
            THOSE IN THE FILE NAMES AT INPUT. 
-###################################	
+###############################################
