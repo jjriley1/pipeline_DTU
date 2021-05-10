@@ -77,4 +77,25 @@ salmon:
 
 dtu: 
     #location of design matrix
-    design_tsv_location: <shared_location>/DTU/design.tsv 
+    design_tsv_location: <shared_location>/DTU/design.tsv
+    drim_dex_filters:
+        #what transcript count do samples need to have to be used
+        minimum_samples_tx_expression_cutoff: 10
+        #what transcript proportion of gene (e.g. fractional expression) 
+        #do these transcripts need to have
+        minimum_samples_tx_proportion_cutoff: 0.1 
+        #what proportion of samples does this criteria need to apply to
+        minimum_samples_transcript_n: 0.4
+        #e.g. expression = 10, proportion = 0.1, and n=0.4 means that 40% of samples
+        #must have transcript count >10 and fract.expr>10%
+         
+        #what gene count do transcripts need to have to be used
+        minimum_samples_gene_expression: 10
+        #what proportion of samples does this criteria need to apply to
+        minimum_samples_gene_n: 0.75
+        #e.g. expression = 10 and n = 0.75 means that
+        #75% of samples must have a gene expression > 10 for the
+        #gene to be considered for DTU
+
+    swish_settings:
+        paired: FALSE
