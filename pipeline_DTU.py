@@ -758,7 +758,7 @@ def gtf_stop_codons(infile, gtf):
 
 @follows(gtf_stop_codons, mkdir("DTU.dir"))
 @transform("design.tsv", suffix("design.tsv"), "DTU.dir/comparisons_to_make.txt") 
-def analyseDesignMatrix (infile, outfile):
+def analyseDesignMatrix(infile, outfile):
     infile = open(infile)
     design = csv.reader(infile, delimiter="\t")
     outfile = open(outfile, "w")
@@ -766,7 +766,7 @@ def analyseDesignMatrix (infile, outfile):
     pipeline_path = os.path.abspath(current_file)
     pipeline_directory = os.path.dirname(pipeline_path)
     script_path = "pipeline_DTU/DTU_scripts/"
-    Rmd_path = os.path.join(pipeline_directory, script_path)  
+    Rmd_path = os.path.join(pipeline_directory, script_path)
     to_cluster=False
 
 
@@ -784,12 +784,12 @@ def analyseDesignMatrix (infile, outfile):
         elif(variables == 2):
             covar1, covar2 = str(row[2]).split(':', 1)
             folder_name_A = str(row[0] + "_vs_" + str(row[1])) + "_in_" + covar1
-            #create info. line 1 = formulae. line 2 = var2 to filter on (e.g. wt vs mutant or treated vs untreated)
-            info_A = "~var1\n" + covar1       
+            #create info. line 1 = formulae
+            info_A = "~var1"      
             folder_name_B = str(row[0] + "_vs_" + str(row[1])) + "_in_" + covar2
-            info_B = "~var1\n" + covar2         
+            info_B = "~var1"         
             folder_name_C = str(row[0] + "_vs_" + str(row[1])) + "_in_" + covar1+"_vs_"+covar2
-            info_C = "~var1 + var2 + var1:var2\n" + covar1 + "," + covar2
+            info_C = "~var1 + var2 + var1:var2"
             outfile.write(folder_name_A + "\n")
             outfile.write(folder_name_B + "\n")
             outfile.write(folder_name_C + "\n")
@@ -810,6 +810,14 @@ def analyseDesignMatrix (infile, outfile):
     infile.close
     outfile.close()
 
+@follows(analyseDesignMatrix)
+@transform("DTU.dir/*/runDRIM+DEX_*.Rmd", suffix(".Rmd"), ".html")
+def runDEXDRIM(infile, outfile):
+    job_threads = 4
+    job_memory = "32G"
+
+    statement = "Rscript -e 'rmarkdown::render(\"%(infile)s\")'"
+    P.run(statement, job_condaenv="R-rstudio", job_memory=job_memory)
 
 #####################
 ##### run fxns ######

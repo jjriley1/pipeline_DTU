@@ -20,16 +20,20 @@ library(GenomicFeatures)
 library(DRIMSeq)
 library(stageR)
 library(DEXSeq)
+library(tidyr)
 ```
 
 Load in the configs / run-specific information
 
 ```{r load_configs}
 #load config and info file
-
+pipeline_yml = yaml::read_yaml("../../pipeline.yml")
 
 #determine which comparison we are currently doing
 folder_name = basename(getwd())
+
+#get formula
+formula = read.table(paste0(folder_name, ".txt")) %>% unlist() %>% unname()
 
 #we need to know what var1 values to filter by
 filter_by_var1 = str_split(folder_name, "_in_")[[1]][1] %>% str_split("_vs_") %>% unlist()
@@ -46,16 +50,14 @@ do_filter_by_var2 = "in" %in% str_split(folder_name, "_")[[1]]
 if (do_filter_by_var2) {
   filter_by_var2 = str_split(folder_name, "_in_")[[1]][2] %>% str_split("_vs_") %>% unlist()
 }
-
-#determine how complex the file_naming is, i.e. 1 or 2 variables
-num_vars = length(stringr::str_split(sample_names[1], "-")[[1]]) - 2
 ```
 
 Generate sample table for tximport
 
 ```{r sample_table_from_sf}
 #list all salmon files in quantification directory
-quant_dir = "quantification.dir"
+
+quant_dir = "../../quantification.dir"
 all_filenames = list.files(quant_dir, pattern="*.sf") 
 
 #strip file name and apply to each item in the list
@@ -67,25 +69,32 @@ names(files) = sample_names
 sample_table = data.frame(files=files, sample_id=sample_names) %>% 
   mutate(files = as.character(files))
 
-#create column for each variable - this varies depending whether there are 1 / 2 vars
-sample_table = sample_table %>% 
-  mutate(identifier=as.factor(stringr::str_split(sample_id, "-")[[1]][1])) %>% 
-  mutate(replicate=as.numeric(stringr::str_extract(sample_id, "(?<=R)\\d+"))) %>%
-  mutate(var1 = as.factor(stringr::str_split(sample_id, "-")[[1]][2]))
+#determine how complex the file_naming is, i.e. 1 or 2 variables
+num_vars = length(stringr::str_split(sample_names[1], "-")[[1]]) - 2
 
-#rearrange it so its easier to read
+#create column for each variable - this varies depending whether there are 1 / 2 vars
+if(num_vars == 1){
+sample_table = sample_table %>% tidyr::separate(sample_id, c("identifier", "var1", "replicate"), remove=FALSE)
+
 sample_table = sample_table %>%
   transmute(sample_id = sample_id,
             identifier = identifier,
             var1 = var1,
             replicate = replicate,
             files = files)
+}
 
 #if there is a 2nd variable add it now and place it after var1
-if (num_vars==2) {
-  sample_table = sample_table %>% 
-    mutate(var2 = as.factor(stringr::str_split(sample_id, "-")[[1]][3])) %>% 
-    relocate(var2, .after=var1)
+if (num_vars == 2) {
+sample_table = sample_table %>% tidyr::separate(sample_id, c("identifier", "var1", "var2", "replicate"), remove=FALSE)
+
+sample_table = sample_table %>%
+  transmute(sample_id = sample_id,
+            identifier = identifier,
+            var1 = var1,
+            var2= var2,
+            replicate = replicate,
+            files = files)
 }
 ```
 
@@ -117,7 +126,7 @@ table(sample_table$var1)
 Check the files exist
 
 ```{r check_files_exist}
-files.exist(sample_table$files)
+all(file.exists(sample_table$files))
 ```
  
 Created named list of files
@@ -141,16 +150,16 @@ cts = cts[rowSums(cts) > 0,]
 
 Load tx2gene from csvdb_files and rename so it matches quantification convention
 
-```{r}
-txdf = read.delim("expression.dir/csvdb_files/tx2gene.txt")
+```{r load_txdf}
+txdf = read.delim("../../expression.dir/csvdb_files/tx2gene.txt")
 txdf = txdf %>% transmute(GENEID = match_gene_id, TXNAME = transcript_id)
 tab = table(txdf$GENEID)
 txdf$ntx = tab[match(txdf$GENEID, names(tab))]
 ```
 
-We need nrows to be same for both the txdf and cts so we need to manipulate both (just in case they differ)
+We need nrows to be same for both the txdf and cts so we need to manipulate both (just in case they differ, which they likely will now due to having filtered out transcripts with count == 0)
 
-```{r}
+```{r reduce_txdf}
 nrow(txdf)
 nrow(cts)
 
@@ -171,17 +180,229 @@ Now they should be the same!
 
 Create counts matrix with each row as a transcript, and each column as a sample
 
-```{r}
+```{r count_matrix}
 library(data.table)
 counts = data.frame(cts)
 counts = setDT(counts, keep.rownames = TRUE)
 colnames(counts)[which(names(counts) == "rn")] = "feature_id"
 counts = merge(counts, txdf, by.x = "feature_id", by.y = "TXNAME")
-counts = counts[,1:36]
+counts = counts[,1:(length(counts)-2)]
 counts = data.frame(counts)
 counts = counts %>% relocate(GENEID) 
 colnames(counts)[which(names(counts) == "GENEID")] = "gene_id"
 row.names(counts) = counts$feature_id
 ```
 
-~~~ to be continued... ~~~
+For some reason this has changed colnames from identifier-var1-replicate to identifier.var1.replicate. So lets change that back to match sample_table.
+
+```{r rename_count_matrix_heads}
+names(counts) = stringr::str_replace_all(names(counts), "\\.", "\\-")
+```
+
+Additionally, there appear to be a few MSTRG transcripts that have no associated gene... so filter those away
+
+```{r filter_novel_no_genes}
+counts = counts %>% filter(gene_id != "")
+```
+
+Create dmDSdata object
+
+```{r create_dmDSdataObject}
+d = dmDSdata(counts=counts, samples=sample_table)
+d
+```
+
+```{r head_dmDSdataObject}
+counts(d[1,])
+```
+
+DRIM/DEX filtering based on pipeline.yml
+
+```{r DTU_filtering}
+n = dim(counts)[2]-2
+tx_n = round(n * as.numeric(pipeline_yml$dtu$drim_dex_filters$minimum_samples_transcript_n))
+tx_expr = as.numeric(pipeline_yml$dtu$drim_dex_filters$minimum_samples_tx_expression_cutoff)
+tx_prop = as.numeric(pipeline_yml$dtu$drim_dex_filters$minimum_samples_tx_proportion_cutoff)
+gene_n = round(n* as.numeric(pipeline_yml$dtu$drim_dex_filters$minimum_samples_gene_n))
+gene_expr = as.numeric(pipeline_yml$dtu$drim_dex_filters$minimum_samples_gene_expression)
+
+d = dmFilter(d,
+             min_samps_feature_expr=tx_n, min_feature_expr=tx_expr,
+             min_samps_feature_prop=tx_n, min_feature_prop=tx_prop,
+             min_samps_gene_expr=(gene_n), min_gene_expr=gene_expr)
+d
+```
+
+How many isoforms are there for each gene?
+
+```{r table_d}
+table(table(counts(d)$gene_id))
+```
+
+Now to create the design matrix based on design_tsv complexity 
+
+```{r design_formula}
+if(formula == "~var1"){
+  design_full = model.matrix(~var1, data=DRIMSeq::samples(d))
+}else if(formula == "~var1 + var2 + var1:var2"){
+  design_full = model.matrix(~var1 + var2 + var1:var2, data=DRIMSeq::sample(d))
+}
+colnames(design_full)
+```
+
+Run DRIMSeq
+
+```{r run_DRIM}
+d = dmPrecision(d, design=design_full)
+d = dmFit(d, design=design_full)
+d = dmTest(d, coef=colnames(design_full)[2])
+```
+
+Results
+
+```{r result_DRIM}
+res = DRIMSeq::results(d)
+head(res)
+```
+
+Now at the transcript level
+
+```{r tx_level_DRIM}
+res.txp = DRIMSeq::results(d, level="feature")
+head(res.txp)
+```
+
+We want to filter this by p-value
+but we also need to make sure that any p-values which return an na value are set to 1 and not 0
+
+```{r filter_drim_pval}
+no.na = function(x) ifelse(is.na(x), 1, x)
+res$pvalue = no.na(res$pvalue)
+res.txp$pvalue = no.na(res.txp$pvalue)
+```
+
+We can plot the top (most confident, i.e. lowest p-value) switch
+
+```{r plot_drim_pval}
+idx = which(res$adj_pvalue < 0.05)[1]
+res[idx,]
+plotProportions(d, res$gene_id[idx], "var1")
+```
+
+### Final processing of DRIMSeq result with stageR
+
+```{r stageR_drim}
+pScreen = res$pvalue
+strp = function(x) substr(x,1,15)
+names(pScreen) = strp(res$gene_id)
+
+pConfirmation = matrix(res.txp$pvalue, ncol=1)
+rownames(pConfirmation) = strp(res.txp$feature_id)
+
+tx2gene = res.txp[,c("feature_id", "gene_id")]
+for (i in 1:2) tx2gene[,i] = strp(tx2gene[,i])
+
+stageRObj = stageRTx(pScreen = pScreen,
+                     pConfirmation = pConfirmation,
+                     pScreenAdjusted = FALSE,
+                     tx2gene = tx2gene)
+
+stageRObj = stageWiseAdjustment(stageRObj, method="dtu", alpha=0.05)
+
+suppressWarnings({
+  drim.padj = getAdjustedPValues(stageRObj, order=FALSE, onlySignificantGenes = TRUE)
+})
+
+head(drim.padj)
+```
+
+
+### DEXSeq 
+
+We can use the data we previously formatted as a starting point
+
+N.b. even though the model uses "exon" here we are feeding it transcripts so it will still work
+
+```{r DEXseqDataSet_from_DRIM}
+sample.data = DRIMSeq::samples(d)
+count.data = round(as.matrix(counts(d)[,-c(1:2)]))
+dxd = DEXSeqDataSet(countData = count.data,
+                    sampleData = sample.data,
+                    design = ~sample + exon + var1:exon,
+                    featureID = counts(d)$feature_id,
+                    groupID = counts(d)$gene_id)
+```
+
+Now run the DEXSeq model
+
+```{r run_DEX}
+dxd = estimateSizeFactors(dxd)
+dxd = estimateDispersions(dxd, quiet=TRUE)
+dxd = testForDEU(dxd, reducedModel = ~sample + exon)
+```
+
+And obtain DEXSeqResult
+
+```{r result_DEX}
+dxr = DEXSeqResults(dxd, independentFiltering = FALSE)
+qval = perGeneQValue(dxr)
+dxr.g = data.frame(gene=names(qval),qval)
+```
+
+And as before we will screen with stageR
+
+```{r stageR_DEX}
+pConfirmation = matrix(dxr$pvalue, ncol=1)
+dimnames(pConfirmation) = list(strp(dxr$featureID), "transcript")
+pScreen = qval
+names(pScreen) = strp(names(pScreen))
+tx2gene = as.data.frame(dxr[,c("featureID", "groupID")])
+for (i in 1:2) tx2gene[,i] = strp(tx2gene[,i])
+```
+
+```{r result_stageR_DEX}
+stageRObj = stageRTx(pScreen=pScreen, 
+                     pConfirmation = pConfirmation,
+                     pScreenAdjusted = TRUE,
+                     tx2gene=tx2gene)
+stageRObj = stageWiseAdjustment(stageRObj, method="dtu", alpha = 0.05)
+
+suppressWarnings({
+  dex.padj = getAdjustedPValues(stageRObj, order=FALSE, onlySignificantGenes = TRUE)
+})
+```
+
+
+And write the files out 
+
+DRIMSeq files (initial (res and res.txp) and stageR-screened (drim.padj))
+
+```{r writeout_DRIM}
+#DRIMSeq outputs
+#Initial result (Gene level)
+write.csv(res, "DRIMSeq.dir/drim_dtu_genes.csv")
+#Tx level
+write.csv(res.txp, "DRIMSeq.dir/drim_dtu_transcripts.csv")
+
+#stageR-screened
+write.csv(drim.padj, "DRIMSeq.dir/drim_dtu_stageR-screened.csv")
+```
+
+DEXSeq files (initial (dxr), genes (dxr.g), and stageR-screened (dex.padj))
+
+```{r writeout_DEX}
+#DEXSeq outputs
+#Initial result
+write.csv(dxr, "DEXSeq.dir/dex_dtu_all.csv")
+#Gene list
+write.csv(dxr.g, "DEXSeq.dir/dex_dtu_genes.csv")
+
+#stageR-screened
+write.csv(dex.padj, "DEXSeq.dir/dex_dtu_stageR-screened.csv")
+```
+
+Finally, save workspace image so I can come back to this if needed. 
+
+```{r save_DTU_image}
+save.image("DRIMDEX_workflow.RData")
+```
