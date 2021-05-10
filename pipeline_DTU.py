@@ -683,7 +683,7 @@ def utrons_expression(infiles, outfiles):
     ### all transcripts - including non-utrons ###
     outfile = "expression.dir/utrons_expression.txt"
     if not os.path.isfile(outfile):
-        statement = ''' Rscript /shared/sudlab1/General/projects/UTRONs/MyFiles/scripts/utrons_Rscript.R '''
+        statement = ''' Rscript /shared/sudlab1/General/projects/stem_utrons/pipelines/pipeline_DTU/pipeline_DTU/utrons_Rscript.R '''
         P.run(statement)
     else:
         pass
@@ -758,11 +758,15 @@ def gtf_stop_codons(infile, gtf):
 
 @follows(gtf_stop_codons, mkdir("DTU.dir"))
 @transform("design.tsv", suffix("design.tsv"), "DTU.dir/comparisons_to_make.txt") 
-def analyseDesignMatrix(infile, outfile):
+def analyseDesignMatrix (infile, outfile):
     infile = open(infile)
     design = csv.reader(infile, delimiter="\t")
     outfile = open(outfile, "w")
-    Rmd_path = "/shared/sudlab1/General/projects/stem_utrons/pipelines/pipeline_DTU/pipeline_DTU/DTU_scripts/"
+    current_file = __file__ 
+    pipeline_path = os.path.abspath(current_file)
+    pipeline_directory = os.path.dirname(pipeline_path)
+    script_path = "pipeline_DTU/DTU_scripts/"
+    Rmd_path = os.path.join(pipeline_directory, script_path)  
     to_cluster=False
 
 
@@ -772,7 +776,7 @@ def analyseDesignMatrix(infile, outfile):
             folder_name = str(row[0] + "_vs_" + str(row[1]))
             info = "~var1"
             outfile.write(folder_name + "\n")
-            statement = (""" mkdir DTU.dir/""" + folder_name + """ && cp """ + Rmd_path + """runDEX.Rmd DTU.dir/""" + folder_name + """/runDEX_""" + folder_name + 
+            statement = (""" mkdir DTU.dir/""" + folder_name + """ && cp """ + Rmd_path + """runDRIM+DEX.Rmd DTU.dir/""" + folder_name + """/runDRIM+DEX_""" + folder_name + 
                          """.Rmd && cp """ + Rmd_path + """runSwish.Rmd DTU.dir/""" + folder_name + """/runSwish_""" + folder_name + """.Rmd && echo \"""" + info +
                          """\" > DTU.dir/""" + folder_name + """.info &&""" + """ cp DTU.dir/""" + folder_name + ".info DTU.dir/" + folder_name + "/" + folder_name + ".txt")
             os.system(statement)
@@ -789,13 +793,13 @@ def analyseDesignMatrix(infile, outfile):
             outfile.write(folder_name_A + "\n")
             outfile.write(folder_name_B + "\n")
             outfile.write(folder_name_C + "\n")
-            statement = (""" mkdir DTU.dir/""" + folder_name_A + """ && cp """ + Rmd_path + """runDEX.Rmd DTU.dir/""" + folder_name_A + """/runDEX_""" + folder_name_A + 
+            statement = (""" mkdir DTU.dir/""" + folder_name_A + """ && cp """ + Rmd_path + """runDRIM+DEX.Rmd DTU.dir/""" + folder_name_A + """/runDRIM+DEX_""" + folder_name_A + 
                          """.Rmd && cp """ + Rmd_path + """runSwish.Rmd DTU.dir/""" + folder_name_A + """/runSwish_""" + folder_name_A + """.Rmd && echo \"""" + info_A +
                          """\" > DTU.dir/""" + folder_name_A + """.info &&""" + """ cp DTU.dir/""" + folder_name_A + ".info DTU.dir/" + folder_name_A + "/" + folder_name_A + ".txt &&" + 
-                         """ mkdir DTU.dir/""" + folder_name_B + """ && cp """ + Rmd_path + """runDEX.Rmd DTU.dir/""" + folder_name_B + """/runDEX_""" + folder_name_B + 
+                         """ mkdir DTU.dir/""" + folder_name_B + """ && cp """ + Rmd_path + """runDRIM+DEX.Rmd DTU.dir/""" + folder_name_B + """/runDRIM+DEX_""" + folder_name_B + 
                          """.Rmd && cp """ + Rmd_path + """runSwish.Rmd DTU.dir/""" + folder_name_B + """/runSwish_""" + folder_name_B + """.Rmd && echo \"""" + info_B +
                          """\" > DTU.dir/""" + folder_name_B + """.info &&""" + """ cp DTU.dir/""" + folder_name_B + ".info DTU.dir/" + folder_name_B + "/" + folder_name_B + ".txt &&" + 
-                         """ mkdir DTU.dir/""" + folder_name_C + """ && cp """ + Rmd_path + """runDEX.Rmd DTU.dir/""" + folder_name_C + """/runDEX_""" + folder_name_C + 
+                         """ mkdir DTU.dir/""" + folder_name_C + """ && cp """ + Rmd_path + """runDRIM+DEX.Rmd DTU.dir/""" + folder_name_C + """/runDRIM+DEX_""" + folder_name_C + 
                          """.Rmd && cp """ + Rmd_path + """runSwish.Rmd DTU.dir/""" + folder_name_C + """/runSwish_""" + folder_name_C + """.Rmd && echo \"""" + info_C +
                          """\" > DTU.dir/""" + folder_name_C + """.info &&""" + """ cp DTU.dir/""" + folder_name_C + ".info DTU.dir/" + folder_name_C + "/" + folder_name_C + ".txt")
             os.system(statement)
@@ -811,11 +815,11 @@ def analyseDesignMatrix(infile, outfile):
 ##### run fxns ######
 #####################
 
-@follows(Assembly, AnnotateAssemblies, export, mergeAllQuants, CSVDBfiles, utrons_expression, identify_splice_sites, gtf_stop_codons)
+@follows(Assembly, AnnotateAssemblies, export, mergeAllQuants, CSVDBfiles, utrons_expression, identify_splice_sites, gtf_stop_codons, analyseDesignMatrix)
 def DTUtrons():
     #decorate this with pipeline_utrons specific things
     pass
-@follows(Assembly, AnnotateAssemblies, export, mergeAllQuants, CSVDBfiles, utrons_expression, identify_splice_sites, gtf_stop_codons)
+@follows(Assembly, AnnotateAssemblies, export, mergeAllQuants, CSVDBfiles, utrons_expression, identify_splice_sites, gtf_stop_codons, analyseDesignMatrix)
 def DTU():
     #decorate this with DTU specific things
     pass
