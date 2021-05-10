@@ -1,11 +1,202 @@
 ---
-title: "runDEX"
-output: html_notebook
+title: "runSwish"
+output: 
+  html_document:
+    df_print: paged
 ---
 
+N.b. this script must be run in the "R-swish" environment:
+"/shared/sudlab1/General/apps/conda/conda-install/envs/R-swish"
 
-
-```{r}
-print(getwd())
+```{r load_libs, warning=FALSE}
+library(fishpond)
+library(tximeta)
+library(dplyr)
+library(samr)
+library(qvalue)
+library(stringr)
+library(tidyr)
 ```
 
+Load in the configs / run-specific information
+
+```{r load_configs}
+#load config and info file
+pipeline_yml = yaml::read_yaml("../../pipeline.yml")
+
+#determine which comparison we are currently doing
+folder_name = basename(getwd())
+
+#get formula
+formula = read.table(paste0(folder_name, ".txt")) %>% unlist() %>% unname()
+
+#we need to know what var1 values to filter by
+filter_by_var1 = str_split(folder_name, "_in_")[[1]][1] %>% str_split("_vs_") %>% unlist()
+
+#if there are 2 'vs' in the name then we are doing the
+#interaction comparison, i.e. ~X + Y + X:Y
+do_interaction = ifelse((length(grep("vs", str_split(folder_name, "_")[[1]])) == 2), TRUE, FALSE)
+
+#if there is an 'in' present then we will need to filter
+#the sample_table later, so we need to know if so
+do_filter_by_var2 = "in" %in% str_split(folder_name, "_")[[1]]
+
+#we also need to know what to filter by, e.g. wt or mutant, or both
+if (do_filter_by_var2) {
+  filter_by_var2 = str_split(folder_name, "_in_")[[1]][2] %>% str_split("_vs_") %>% unlist()
+}
+```
+
+Generate sample table for tximport
+
+```{r sample_table_from_sf}
+#list all salmon files in quantification directory
+
+quant_dir = "../../quantification.dir"
+all_filenames = list.files(quant_dir, pattern="*.sf") 
+
+#strip file name and apply to each item in the list
+files<-file.path(quant_dir, all_filenames) 
+sample_names = sapply(all_filenames, function(x) strsplit(x, "[.]")[[1]][1])
+names(files) = sample_names
+
+#create basic sample table
+sample_table = data.frame(files=files, sample_id=sample_names) %>% 
+  mutate(files = as.character(files))
+
+#determine how complex the file_naming is, i.e. 1 or 2 variables
+num_vars = length(stringr::str_split(sample_names[1], "-")[[1]]) - 2
+
+#create column for each variable - this varies depending whether there are 1 / 2 vars
+if(num_vars == 1){
+sample_table = sample_table %>% tidyr::separate(sample_id, c("identifier", "var1", "replicate"), remove=FALSE)
+
+sample_table = sample_table %>%
+  transmute(sample_id = sample_id,
+            identifier = identifier,
+            var1 = var1,
+            replicate = replicate,
+            files = files)
+}
+
+#if there is a 2nd variable add it now and place it after var1
+if (num_vars == 2) {
+sample_table = sample_table %>% tidyr::separate(sample_id, c("identifier", "var1", "var2", "replicate"), remove=FALSE)
+
+sample_table = sample_table %>%
+  transmute(sample_id = sample_id,
+            identifier = identifier,
+            var1 = var1,
+            var2= var2,
+            replicate = replicate,
+            files = files)
+}
+```
+
+Need to filter rows for those included in the variables:
+2 steps to this:
+  - If 1 variable, we need to filter rows by those which are specified in design matrix
+  e.g. if looking at hESC vs NPC, only rows for hESC and NPC should be kept, not HSCs. 
+  - If 2 variables, we need to do the above but also filter rows which are in the 
+  condition we are currently looking at:
+    + e.g. if we are looking at hESC vs NPC in mutant, we need to filter for var2==mutant,
+    if we are looking at hESC vs NPC in wt then we need to filter for var2==wt. If we are
+    looking at hESC vs NPC in mutant vs wt then keep both, but disregard other interactors
+    (in case there are more than 2 from the dataset).
+    
+```{r filter_sample_table}
+sample_table = sample_table %>% dplyr::filter(var1 %in% filter_by_var1)
+
+if (num_vars==2){
+  sample_table = sample_table %>% dplyr::filter(var2 %in% filter_by_var2)
+}
+```
+
+How many in each condition
+
+```{r table_of_conditions}
+table(sample_table$var1)
+```
+
+
+
+Check files exist
+
+```{r check_exists}
+all(file.exists(sample_table$files))
+```
+
+If data is paired (by identifier) then remove those where there is only 1 of the 2 present (i.e. filtered at source)
+
+```{r filter_for_pairs}
+if(pipeline_yml$dtu$swish_settings$paired == TRUE){
+summarized_sample_table = sample_table %>% group_by(identifier) %>% summarize(n=n()) %>% dplyr::filter(n==2) %>% dplyr::select(identifier) %>% unlist() %>% unname()
+
+sample_table = sample_table %>% dplyr::filter(identifier %in% summarized_sample_table)
+}
+```
+
+Import with tximeta
+
+```{r import_with_tximeta}
+library(SummarizedExperiment)
+
+#make the linkedTxome
+indexDir = file.path("salmon_index/agg-agg-agg.gtf.salmon.index")
+#first run "bash remove_non_stranded.sh"
+gtfPath = file.path("export/agg-agg-agg-strandedOnly.gtf")
+#gtfPath = "http://ftp.ensembl.org/pub/release-85/gtf/homo_sapiens/Homo_sapiens.GRCh38.85.gtf.gz" ##<<--- ref only, not stringtie
+fastaPath = file.path("salmon_index/agg-agg-aggtranscripts.fasta")
+tmp = tempdir()
+jsonFile = file.path(tmp, paste0(basename(indexDir), ".json"))
+library(ensembldb)
+makeLinkedTxome(indexDir = indexDir,
+                source = "ModifiedEnsembl", organism = "Homo sapien",
+                release = "85", genome = "GRCh38",
+                fasta=fastaPath, gtf=gtfPath,
+                jsonFile = jsonFile)
+se = tximeta(sample_table, tx2gene="expression.dir/csvdb_files/tx2gene.txt")
+```
+
+Assays, should list infReps
+
+```{r assaynames}
+assayNames(se)
+```
+
+DTU:
+
+```{r swish_DTU}
+se = scaleInfReps(se)
+se = labelKeep(se)
+se = se[mcols(se)$keep,]
+set.seed(1)
+iso = isoformProportions(se)
+if(pipeline_yml$dtu$swish_settings$paired == TRUE){
+  iso = swish(iso, x="var1", pair="identifier")
+} else {
+  iso = swish(iso, x="var1")
+}
+table(mcols(iso)$qvalue<0.05)
+```
+
+```{r head_mcols}
+head(mcols(iso))
+```
+
+```{r head_sigDTU}
+sig_DTU = as.data.frame(mcols(iso)) %>% dplyr::filter(qvalue<0.05 & pvalue<0.05) %>% arrange(qvalue)
+head(sig_DTU)
+print(paste0("Number of significant DTU transcripts: ", nrow(sig_DTU)))
+print(paste0("Number of significant DTU genes: ", nrow(sig_DTU %>% dplyr::select(gene_id) %>% dplyr::distinct())))
+sig_DTU = sig_DTU %>% dplyr::select(-c(gene_id, tx_id, gene))
+tx2gene = read.delim("expression.dir/csvdb_files/tx2gene.txt")
+tx2gene = tx2gene %>% dplyr::filter(transcript_id %in% sig_DTU$tx_name)
+sig_DTU = left_join(sig_DTU, tx2gene, by=c("tx_name"="transcript_id"))
+sig_DTU = sig_DTU %>% dplyr::rename(tx_id = tx_name) %>% dplyr::rename(gene_id = match_gene_id)
+```
+
+```{r save}
+write.csv(sig_DTU, "sig_DTU.csv", quote=FALSE)
+save.image("DTU.RData")
+```
