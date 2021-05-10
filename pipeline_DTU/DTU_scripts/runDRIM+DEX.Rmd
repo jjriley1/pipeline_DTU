@@ -252,9 +252,13 @@ colnames(design_full)
 
 Run DRIMSeq
 
-```{r run_DRIM}
+```{r run_DRIM_precision}
 d = dmPrecision(d, design=design_full)
+```
+```{r run_DRIM_fit}
 d = dmFit(d, design=design_full)
+```
+```{r run_DRIM_test}
 d = dmTest(d, coef=colnames(design_full)[2])
 ```
 
@@ -335,9 +339,13 @@ dxd = DEXSeqDataSet(countData = count.data,
 
 Now run the DEXSeq model
 
-```{r run_DEX}
+```{r run_DEX_estimateSizeFactors}
 dxd = estimateSizeFactors(dxd)
+```
+```{r run_DEX_estimateDispersion}
 dxd = estimateDispersions(dxd, quiet=TRUE)
+```
+```{r run_DEX_testForDTU}
 dxd = testForDEU(dxd, reducedModel = ~sample + exon)
 ```
 
@@ -380,12 +388,12 @@ DRIMSeq files (initial (res and res.txp) and stageR-screened (drim.padj))
 ```{r writeout_DRIM}
 #DRIMSeq outputs
 #Initial result (Gene level)
-write.csv(res, "DRIMSeq.dir/drim_dtu_genes.csv")
+write.csv(res, "drim_dtu_genes.csv")
 #Tx level
-write.csv(res.txp, "DRIMSeq.dir/drim_dtu_transcripts.csv")
+write.csv(res.txp, "drim_dtu_transcripts.csv")
 
 #stageR-screened
-write.csv(drim.padj, "DRIMSeq.dir/drim_dtu_stageR-screened.csv")
+write.csv(drim.padj, "drim_dtu_stageR-screened.csv")
 ```
 
 DEXSeq files (initial (dxr), genes (dxr.g), and stageR-screened (dex.padj))
@@ -393,12 +401,12 @@ DEXSeq files (initial (dxr), genes (dxr.g), and stageR-screened (dex.padj))
 ```{r writeout_DEX}
 #DEXSeq outputs
 #Initial result
-write.csv(dxr, "DEXSeq.dir/dex_dtu_all.csv")
+write.csv(dxr, "dex_dtu_all.csv")
 #Gene list
-write.csv(dxr.g, "DEXSeq.dir/dex_dtu_genes.csv")
+write.csv(dxr.g, "dex_dtu_genes.csv")
 
 #stageR-screened
-write.csv(dex.padj, "DEXSeq.dir/dex_dtu_stageR-screened.csv")
+write.csv(dex.padj, "dex_dtu_stageR-screened.csv")
 ```
 
 Finally, save workspace image so I can come back to this if needed. 
