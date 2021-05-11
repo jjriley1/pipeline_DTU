@@ -847,6 +847,26 @@ def runSwish(infile, outfile):
     statement = "Rscript -e 'rmarkdown::render(\"%(infile)s\")'"
     P.run(statement, job_condaenv="R-swish", job_memory=job_memory)
 
+@follows(runDEXDRIM, runSwish)
+@transform(runDEXDRIM, regex("DTU.dir/(.+)/(.+)_(.+).html"), r"DTU.dir/\1/compareDTU_\1.html")
+def analyseDTU(infile, outfile):
+    job_threads = 2
+    job_memory = "32G"
+
+    current_file = __file__ 
+    pipeline_path = os.path.abspath(current_file)
+    pipeline_directory = os.path.dirname(pipeline_path)
+    script_path = "pipeline_DTU/DTU_scripts/"
+    Rmd_path = os.path.join(pipeline_directory, script_path)
+
+    trimmed_outfile = outfile.replace(".html", ".Rmd")
+
+    copy_statement = "cp " + script_path + "compareDTU.Rmd " + trimmed_outfile 
+    os.system(copy_statement)
+
+    run_statement = "Rscript -e 'rmarkdown::render(\"%(trimmed_outfile)s\")'"
+    P.run(run_statement, job_condaenv="R-rstudio")
+
 @follows(analyseDesignMatrix, runDEXDRIM, runSwish)
 def runDTU():
     pass
@@ -855,11 +875,11 @@ def runDTU():
 ##### run fxns ######
 #####################
 
-@follows(Assembly, AnnotateAssemblies, export, mergeAllQuants, CSVDBfiles, utrons_expression, identify_splice_sites, gtf_stop_codons, analyseDesignMatrix, runDTU)
+@follows(Assembly, AnnotateAssemblies, export, mergeAllQuants, CSVDBfiles, utrons_expression, identify_splice_sites, gtf_stop_codons, analyseDesignMatrix, runDTU, analyseDTU)
 def DTUtrons():
     #decorate this with pipeline_utrons specific things
     pass
-@follows(Assembly, AnnotateAssemblies, export, mergeAllQuants, analyseDesignMatrix, runDTU)
+@follows(Assembly, AnnotateAssemblies, export, mergeAllQuants, analyseDesignMatrix, runDTU, analyseDTU)
 def DTU():
     #decorate this with DTU specific things
     pass
