@@ -820,6 +820,18 @@ def runDEXDRIM(infile, outfile):
     P.run(statement, job_condaenv="R-rstudio", job_memory=job_memory)
 
 @follows(analyseDesignMatrix)
+@transform("export/agg-agg-agg.gtf.gz", suffix(".gtf.gz"), "-strandedOnly.gtf")
+def filterNonStrandedForSwish(infile, outfile):
+    current_file = __file__ 
+    pipeline_path = os.path.abspath(current_file)
+    pipeline_directory = os.path.dirname(pipeline_path)
+    script_path = "pipeline_DTU/remove_non_stranded.sh"
+    sh_path = os.path.join(pipeline_directory, script_path)
+
+    statement = "bash " + sh_path
+    os.system(statement)
+
+@follows(analyseDesignMatrix, filterNonStrandedForSwish)
 @transform("DTU.dir/*/runSwish_*.Rmd", suffix(".Rmd"), ".html")
 def runSwish(infile, outfile):
     job_threads = 4
