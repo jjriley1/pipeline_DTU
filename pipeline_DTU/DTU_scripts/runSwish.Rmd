@@ -142,11 +142,10 @@ Import with tximeta
 library(SummarizedExperiment)
 
 #make the linkedTxome
-indexDir = file.path("salmon_index/agg-agg-agg.gtf.salmon.index")
+indexDir = file.path("../../salmon_index/agg-agg-agg.gtf.salmon.index")
 #first run "bash remove_non_stranded.sh"
-gtfPath = file.path("export/agg-agg-agg-strandedOnly.gtf")
-#gtfPath = "http://ftp.ensembl.org/pub/release-85/gtf/homo_sapiens/Homo_sapiens.GRCh38.85.gtf.gz" ##<<--- ref only, not stringtie
-fastaPath = file.path("salmon_index/agg-agg-aggtranscripts.fasta")
+gtfPath = file.path("../../export/agg-agg-agg-strandedOnly.gtf")
+fastaPath = file.path("../../salmon_index/agg-agg-aggtranscripts.fasta")
 tmp = tempdir()
 jsonFile = file.path(tmp, paste0(basename(indexDir), ".json"))
 library(ensembldb)
@@ -155,7 +154,7 @@ makeLinkedTxome(indexDir = indexDir,
                 release = "85", genome = "GRCh38",
                 fasta=fastaPath, gtf=gtfPath,
                 jsonFile = jsonFile)
-se = tximeta(sample_table, tx2gene="expression.dir/csvdb_files/tx2gene.txt")
+se = tximeta(sample_table, tx2gene="../../expression.dir/csvdb_files/tx2gene.txt")
 ```
 
 Assays, should list infReps
@@ -166,12 +165,21 @@ assayNames(se)
 
 DTU:
 
-```{r swish_DTU}
+```{r swish_DTU_scale_inf_reps}
 se = scaleInfReps(se)
+```
+
+```{r swish_DTU_label_keep_and_filter}
 se = labelKeep(se)
 se = se[mcols(se)$keep,]
+```
+
+```{r swish_isoformProportions}
 set.seed(1)
 iso = isoformProportions(se)
+```
+
+```{r swish_DTU}
 if(pipeline_yml$dtu$swish_settings$paired == TRUE){
   iso = swish(iso, x="var1", pair="identifier")
 } else {
@@ -190,13 +198,13 @@ head(sig_DTU)
 print(paste0("Number of significant DTU transcripts: ", nrow(sig_DTU)))
 print(paste0("Number of significant DTU genes: ", nrow(sig_DTU %>% dplyr::select(gene_id) %>% dplyr::distinct())))
 sig_DTU = sig_DTU %>% dplyr::select(-c(gene_id, tx_id, gene))
-tx2gene = read.delim("expression.dir/csvdb_files/tx2gene.txt")
+tx2gene = read.delim("../../expression.dir/csvdb_files/tx2gene.txt")
 tx2gene = tx2gene %>% dplyr::filter(transcript_id %in% sig_DTU$tx_name)
 sig_DTU = left_join(sig_DTU, tx2gene, by=c("tx_name"="transcript_id"))
 sig_DTU = sig_DTU %>% dplyr::rename(tx_id = tx_name) %>% dplyr::rename(gene_id = match_gene_id)
 ```
 
 ```{r save}
-write.csv(sig_DTU, "sig_DTU.csv", quote=FALSE)
-save.image("DTU.RData")
+write.csv(sig_DTU, "swish_sig_DTU.csv", quote=FALSE)
+save.image("swishDTU.RData")
 ```
