@@ -53,11 +53,14 @@ Generate sample table for tximport
 #list all salmon files in quantification directory
 
 quant_dir = "../../quantification.dir"
-all_filenames = list.files(quant_dir, pattern="*.sf") 
+all_foldernames = list.files(quant_dir)
+all_filenames = list.files(quant_dir, pattern="*.sf")
+all_foldernames = all_foldernames[!(all_foldernames %in% all_filenames)]
 
 #strip file name and apply to each item in the list
-files<-file.path(quant_dir, all_filenames) 
-sample_names = sapply(all_filenames, function(x) strsplit(x, "[.]")[[1]][1])
+files<-file.path(quant_dir, all_foldernames, all_filenames) 
+sample_names = sapply(all_foldernames, function(x) substr(x, 0, nchar(x)-3))
+sample_names = sapply(all_foldernames, function(x) strsplit(x, "[.]")[[1]][1])
 names(files) = sample_names
 
 #create basic sample table
@@ -72,7 +75,7 @@ if(num_vars == 1){
 sample_table = sample_table %>% tidyr::separate(sample_id, c("identifier", "var1", "replicate"), remove=FALSE)
 
 sample_table = sample_table %>%
-  transmute(sample_id = sample_id,
+  transmute(names = sample_id,
             identifier = identifier,
             var1 = var1,
             replicate = replicate,

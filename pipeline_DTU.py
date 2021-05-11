@@ -831,7 +831,14 @@ def filterNonStrandedForSwish(infile, outfile):
     statement = "bash " + sh_path
     os.system(statement)
 
-@follows(analyseDesignMatrix, filterNonStrandedForSwish)
+@follows(analyseDesignMatrix)
+@transform("quantification.dir/*.sf", regex("quantification.dir/(.+).sf"), r"quantification.dir/\1/\1.sf")
+def copySalmonQuantLocsForSwish(infile, outfile):
+    statement = "cp %(infile)s %(outfile)s"
+    to_cluster=False
+    P.run(statement)
+
+@follows(analyseDesignMatrix, filterNonStrandedForSwish, copySalmonQuantLocsForSwish)
 @transform("DTU.dir/*/runSwish_*.Rmd", suffix(".Rmd"), ".html")
 def runSwish(infile, outfile):
     job_threads = 4
