@@ -1,0 +1,187 @@
+---
+title: "Compare DTU outputs"
+author: "Jack Riley"
+output: 
+  html_document:
+    df_print: paged
+---
+
+Use R-rstudio environment
+
+Load libraries
+
+```{r setup, warning = FALSE}
+library(dplyr)
+library(org.Hs.eg.db)
+library(data.table)
+library(stringr)
+library(ggplot2)
+library(ggvenn)
+library(tidyr)
+```
+
+Load DTU outputs
+
+```{r load_DTU_outputs}
+DRIM_output = fread("drim_dtu_stageR-screened.csv") %>% dplyr::select(-V1)
+DEX_output = fread("dex_dtu_stageR-screened.csv") %>% dplyr::select(-V1)
+SWISH_output = fread("swish_sig_DTU.csv") %>% dplyr::select(-V1)
+```
+
+How many genes are DTU in each?
+
+```{r n_genes}
+DRIM_output_sig_genes = DRIM_output %>% dplyr::select(geneID) %>% filter(!is.na(geneID)) %>% distinct() %>% unlist()
+length(DRIM_output_sig_genes)
+DEX_output_sig_genes = DEX_output %>% dplyr::select(geneID) %>% filter(!is.na(geneID)) %>% distinct() %>% unlist()
+length(DEX_output_sig_genes)
+SWISH_output_sig_genes = SWISH_output %>% dplyr::select(gene_id) %>% filter(!is.na(gene_id)) %>% distinct() %>% unlist()
+length(SWISH_output_sig_genes)
+```
+
+
+```{r venn}
+x = list(DEXSeq = DEX_output_sig_genes, DRIMSeq = DRIM_output_sig_genes, Swish = SWISH_output_sig_genes)
+ggvenn(x, 
+       fill_color = c("#0073C2FF", "#EFC000FF", "#CD534CFF"),
+       stroke_size = 0.5, set_name_size = 5, text_size = 4, digits=1, show_elements=F
+  )
+```
+
+Compile a single list that has all the genes that show DTU. How many in total
+
+```{r combined_DTU}
+combined_DTU = c(DEX_output_sig_genes, DRIM_output_sig_genes, SWISH_output_sig_genes) %>% unique()
+length(combined_DTU)
+```
+
+```{r ggplot_comparison}
+packages = c("DRIMSeq", "DEXSeq", "Swish", "Combined")
+output_n = c(length(DRIM_output_sig_genes), length(DEX_output_sig_genes), length(SWISH_output_sig_genes), length(combined_DTU))
+graph_df = data.frame(packages, output_n)
+
+graph_df %>% ggplot(aes(x=packages, y=output_n, fill=packages)) + geom_bar(stat="identity")
+```
+
+### Major to Minor (or Viceversa) Flips
+
+```{r load_expression_data}
+expression_data = fread("../../expression.dir/utrons_expression.txt")
+```
+
+```{r filter_expression_data}
+expression_data = expression_data %>% dplyr::filter(gene_id %in% combined_DTU)
+expression_data = expression_data %>% tidyr::separate(Sample, c("identifier", "var1", "replicate"), remove=FALSE)
+
+folder_name = basename(getwd())
+filter_by_var1 = str_split(folder_name, "_in_")[[1]][1] %>% str_split("_vs_") %>% unlist()
+
+expression_data = expression_data %>% dplyr::filter(var1 %in% filter_by_var1)
+```
+
+Summarize:
+
+```{r summarize}
+expression_data_summary = expression_data %>% dplyr::group_by(transcript_id, var1) %>%
+  dplyr::summarize(median.tr.expr = median(tr.expr), median.gene.expr = median(gene.expr))
+
+expression_data_summary_var1_1 = expression_data_summary %>% dplyr::filter(var1 == filter_by_var1[1]) %>%
+  dplyr::rename(var1_1 = var1, var1_1.tr.expr = median.tr.expr, var1_1.gene.expr = median.gene.expr) %>%
+  dplyr::mutate(var1_1.fract.expr = var1_1.tr.expr/var1_1.gene.expr)
+expression_data_summary_var1_2 = expression_data_summary %>% dplyr::filter(var1 == filter_by_var1[2]) %>%
+  dplyr::rename(var1_2 = var1, var1_2.tr.expr = median.tr.expr, var1_2.gene.expr = median.gene.expr) %>%
+  dplyr::mutate(var1_2.fract.expr = var1_2.tr.expr/var1_2.gene.expr)
+```
+
+```{r compare var1}
+DTU_comp = left_join(expression_data_summary_var1_1, expression_data_summary_var1_2, by="transcript_id") 
+DTU_comp = DTU_comp %>% dplyr::mutate(flip_effect_size = var1_2.fract.expr-var1_1.fract.expr)
+nrow(DTU_comp)
+```
+
+Filter for flips from over 30% to under 30% and the effect size is greater than 10% (make this configurable)
+
+```{r filter_flips}
+flip_cutoff = 0.3
+flip_effect_size_cutoff = 0.1
+
+DTU_comp_flips = DTU_comp %>% dplyr::filter(((var1_1.fract.expr<flip_cutoff & var1_2.fract.expr>flip_cutoff)|
+                                              (var1_1.fract.expr>flip_cutoff & var1_2.fract.expr<flip_cutoff))& 
+                                              abs(flip_effect_size)>flip_effect_size_cutoff)
+nrow(DTU_comp_flips)
+```
+
+get corresponding gene IDs and names
+
+```{r add_genes}
+tx2gene = read.delim("../../expression.dir/csvdb_files/tx2gene.txt")
+DTU_comp_flips = left_join(DTU_comp_flips, tx2gene, by="transcript_id") %>% dplyr::relocate(match_gene_id, .after=transcript_id)
+DTU_comp_flips$SYMBOL = mapIds(org.Hs.eg.db,
+                               keys=as.character(DTU_comp_flips$match_gene_id),
+                               column="SYMBOL",
+                               keytype="ENSEMBL",
+                               multiVals = "first")
+```
+
+How many unique genes?
+
+```{r unique_genes}
+DTU_comp_flips[2] %>% distinct() %>% nrow()
+```
+
+### Filter for utrons
+
+```{r filter_utrons}
+utron_ids = read.delim("../../expression.dir/csvdb_files/all_utrons_ids.txt")
+utron_ids = utron_ids[2]
+```
+
+```{r filter_utrons_2}
+DTUtrons = DTU_comp_flips %>% dplyr::filter(transcript_id %in% utron_ids$transcript_id) %>% relocate(SYMBOL, .after = match_gene_id)
+```
+
+```{r head_dtutrons}
+DTUtrons
+```
+
+### Filter for partnered utrons
+
+```{r filter_partnered_utrons}
+partnered_ids = read.delim("../../expression.dir/csvdb_files/partnered_utrons_ids.txt")
+partnered_DTUtrons = DTU_comp_flips %>% dplyr::filter(transcript_id %in% partnered_ids$transcript_id | transcript_id %in% partnered_ids$match_transcript_id) %>% dplyr::mutate(utron = transcript_id %in% utron_ids$transcript_id) %>% relocate(SYMBOL, .after=match_gene_id)
+```
+
+```{r summarize_partnered_utrons}
+partnered_summary = partnered_DTUtrons %>% group_by(SYMBOL) %>% summarize(num = n())
+partnered_summary = partnered_summary %>% filter(num>1) %>% dplyr::select(SYMBOL) %>% unlist()
+partnered_DTUtron_flips = partnered_DTUtrons %>% filter(SYMBOL %in% partnered_summary) %>% arrange(SYMBOL) %>% relocate(utron, .after=SYMBOL)
+partnered_DTUtron_flips
+```
+
+
+Filter out those where both isoform are utron == TRUE or utron == FALSE
+
+```{r filter_isoform_flip}
+filter = partnered_DTUtron_flips %>% group_by(SYMBOL) %>% summarize(num = n_distinct(utron)) %>% filter(num==2)
+partnered_DTUtron_flips = partnered_DTUtron_flips %>% dplyr::filter(SYMBOL %in% filter$SYMBOL)
+partnered_DTUtron_flips
+```
+Add 3 columns (booleans) to determine which DTU software they were significant in
+
+```{r add_sources}
+partnered_DTUtron_flips = partnered_DTUtron_flips %>% mutate(fromSwish = match_gene_id %in% SWISH_output_sig_genes,
+                                                             fromDRIM = match_gene_id %in% DRIM_output_sig_genes,
+                                                             fromDEX = match_gene_id %in% DEX_output_sig_genes)
+
+DTUtrons = DTUtrons %>% mutate(fromSwish = match_gene_id %in% SWISH_output_sig_genes,
+                                                             fromDRIM = match_gene_id %in% DRIM_output_sig_genes,
+                                                             fromDEX = match_gene_id %in% DEX_output_sig_genes)
+```
+
+Write out
+
+```{r write_out}
+write.csv(partnered_DTUtron_flips, "partnered_DTUtron_flips.csv")
+write.csv(DTUtrons, "DTUtron_flips.csv")
+save.image("compareDTU.Rmd")
+```
