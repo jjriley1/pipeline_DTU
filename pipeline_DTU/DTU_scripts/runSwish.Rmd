@@ -107,11 +107,11 @@ Need to filter rows for those included in the variables:
     looking at hESC vs NPC in mutant vs wt then keep both, but disregard other interactors
     (in case there are more than 2 from the dataset).
     
-```{r filter_sample_table}
-sample_table = sample_table %>% dplyr::filter(var1 %in% filter_by_var1)
+```{r filter_sample_table_and_factorize}
+sample_table = sample_table %>% dplyr::filter(var1 %in% filter_by_var1) %>% mutate(var1 = as.factor(var1))
 
 if (num_vars==2){
-  sample_table = sample_table %>% dplyr::filter(var2 %in% filter_by_var2)
+  sample_table = sample_table %>% dplyr::filter(var2 %in% filter_by_var2) %>% mutate(var2 = as.factor(var2))
 }
 ```
 
