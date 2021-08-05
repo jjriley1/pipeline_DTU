@@ -99,28 +99,55 @@ DTU_comp = DTU_comp %>% dplyr::mutate(flip_effect_size = var1_2.fract.expr-var1_
 nrow(DTU_comp)
 ```
 
-Filter for flips from over 30% to under 30% and the effect size is greater than 10% (make this configurable)
+get corresponding gene IDs and names
+
+```{r add_genes}
+tx2gene = read.delim("../../expression.dir/csvdb_files/tx2gene.txt")
+DTU_comp = left_join(DTU_comp, tx2gene, by="transcript_id") %>% dplyr::relocate(match_gene_id, .after=transcript_id)
+DTU_comp$SYMBOL = mapIds(org.Hs.eg.db,
+                               keys=as.character(DTU_comp$match_gene_id),
+                               column="SYMBOL",
+                               keytype="ENSEMBL",
+                               multiVals = "first")
+```
+
+Get the major isoform  for each gene at each point of comparison, in var1_1 and var1_2
+
+```{r}
+expression_data_summary_var1_1 = left_join(expression_data_summary_var1_1, tx2gene, by="transcript_id") 
+expression_data_summary_var1_2 = left_join(expression_data_summary_var1_2, tx2gene, by="transcript_id") 
+
+max_tr_var1_1 = expression_data_summary_var1_1 %>% group_by(match_gene_id) %>% summarize(max_tx_expr_var1_1 = max(var1_1.tr.expr))
+max_tr_var1_2 = expression_data_summary_var1_2 %>% group_by(match_gene_id) %>% summarize(max_tx_expr_var1_2 = max(var1_2.tr.expr))
+
+expression_data_summary_var1_1 = left_join(expression_data_summary_var1_1, max_tr_var1_1, by="match_gene_id")
+expression_data_summary_var1_2 = left_join(expression_data_summary_var1_2, max_tr_var1_2, by="match_gene_id")
+
+major_isoforms_var1_1 = expression_data_summary_var1_1 %>% filter(var1_1.tr.expr==max_tx_expr_var1_1) %>%
+  dplyr::select(transcript_id, match_gene_id) 
+
+major_isoforms_var1_2 = expression_data_summary_var1_2 %>% filter(var1_2.tr.expr==max_tx_expr_var1_2) %>%
+  dplyr::select(transcript_id, match_gene_id)
+
+combined_major_isoforms = inner_join(major_isoforms_var1_1, major_isoforms_var1_2, by="match_gene_id")
+
+colnames(combined_major_isoforms) = c("var1_1_major", "gene_id", "var1_2_major")
+
+flip_major_isoforms = combined_major_isoforms %>% dplyr::filter(var1_1_major != var1_2_major)
+```
+
+Filter for flips from major to minor isoform and over X to under X and the effect size is greater than Y (make X+Y configurable)
 
 ```{r filter_flips}
 flip_cutoff = 0.3
 flip_effect_size_cutoff = 0.1
 
-DTU_comp_flips = DTU_comp %>% dplyr::filter(((var1_1.fract.expr<flip_cutoff & var1_2.fract.expr>flip_cutoff)|
-                                              (var1_1.fract.expr>flip_cutoff & var1_2.fract.expr<flip_cutoff))& 
+DTU_comp_flips = DTU_comp %>% dplyr::filter((transcript_id %in% flip_major_isoforms$var1_1_major | 
+                                               transcript_id %in% flip_major_isoforms$var1_2_major) &
+                                              ((var1_1.fract.expr<flip_cutoff & var1_2.fract.expr>flip_cutoff) |
+                                              (var1_1.fract.expr>flip_cutoff & var1_2.fract.expr<flip_cutoff)) & 
                                               abs(flip_effect_size)>flip_effect_size_cutoff)
 nrow(DTU_comp_flips)
-```
-
-get corresponding gene IDs and names
-
-```{r add_genes}
-tx2gene = read.delim("../../expression.dir/csvdb_files/tx2gene.txt")
-DTU_comp_flips = left_join(DTU_comp_flips, tx2gene, by="transcript_id") %>% dplyr::relocate(match_gene_id, .after=transcript_id)
-DTU_comp_flips$SYMBOL = mapIds(org.Hs.eg.db,
-                               keys=as.character(DTU_comp_flips$match_gene_id),
-                               column="SYMBOL",
-                               keytype="ENSEMBL",
-                               multiVals = "first")
 ```
 
 How many unique genes?
@@ -158,7 +185,6 @@ partnered_DTUtron_flips = partnered_DTUtrons %>% filter(SYMBOL %in% partnered_su
 partnered_DTUtron_flips
 ```
 
-
 Filter out those where both isoform are utron == TRUE or utron == FALSE
 
 ```{r filter_isoform_flip}
@@ -166,6 +192,20 @@ filter = partnered_DTUtron_flips %>% group_by(SYMBOL) %>% summarize(num = n_dist
 partnered_DTUtron_flips = partnered_DTUtron_flips %>% dplyr::filter(SYMBOL %in% filter$SYMBOL)
 partnered_DTUtron_flips
 ```
+
+Also filter out those where utron and partner both go up / down. We want to look specifically at flips/displacements.
+
+```{r  filter_same_dir}
+filter_both_up = partnered_DTUtron_flips %>% group_by(SYMBOL) %>% summarize(same = all(flip_effect_size > 0)) %>%
+  dplyr::filter(same==TRUE) %>% dplyr::select(SYMBOL) %>% unlist()
+filter_both_down = partnered_DTUtron_flips %>% group_by(SYMBOL) %>% summarize(same = all(flip_effect_size < 0)) %>%
+  dplyr::filter(same==TRUE) %>% dplyr::select(SYMBOL) %>% unlist()
+
+partnered_DTUtron_flips = partnered_DTUtron_flips %>% dplyr::filter(!(SYMBOL %in% filter_both_up | SYMBOL %in% filter_both_down))
+partnered_DTUtron_flips
+
+```
+
 Add 3 columns (booleans) to determine which DTU software they were significant in
 
 ```{r add_sources}
