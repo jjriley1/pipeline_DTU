@@ -581,7 +581,7 @@ def quantifyWithSalmon(infiles, outfile):
     salmonIndex = "salmon_index/" + gtfbase + ".salmon.index"
 
     salmon_options = PARAMS["salmon_quantoptions"]
-    bootstrap_options = PARAMS["num_bootstraps"]
+    bootstrap_options = PARAMS["salmon_num_bootstraps"]
 
     sorted_bam="sorted_bams/" + sample_name[0] + "_sorted.bam"
     fastq1 = P.snip(outfile, "_agg-agg-agg")+".1.fastq"
@@ -719,7 +719,7 @@ def identify_splice_sites(infiles, outfiles):
     infile=infiles
     outfile, outfile_load = outfiles
     
-    statement = ''' python /shared/sudlab1/General/projects/stem_utrons/pipelines/pipeline_DTU/splicesites_start_end_sizes.py %(infile)s %(outfile)s;
+    statement = ''' python /shared/sudlab1/General/projects/stem_utrons/pipelines/pipeline_DTU/pipeline_DTU/splicesites_start_end_sizes.py %(infile)s %(outfile)s;
                     sort -u %(outfile)s > %(outfile)s_2.txt; rm %(outfile)s; mv %(outfile)s_2.txt %(outfile)s;
                     sed -i $'1i transcript_id\\tstrand\\tss5\\tss3\\tcontig\\tsplice_site_start\\tsplice_site_end\\tutron_size' %(outfile)s '''
     P.run(statement)   
