@@ -23,9 +23,9 @@ library(tidyr)
 Load DTU outputs
 
 ```{r load_DTU_outputs}
-DRIM_output = fread("drim_dtu_stageR-screened.csv") %>% dplyr::select(-V1)
-DEX_output = fread("dex_dtu_stageR-screened.csv") %>% dplyr::select(-V1)
-SWISH_output = fread("swish_sig_DTU.csv") %>% dplyr::select(-V1)
+DRIM_output = fread("drim_dtu_stageR-screened.csv", header=T) %>% dplyr::select(-V1)
+DEX_output = fread("dex_dtu_stageR-screened.csv", header=T) %>% dplyr::select(-V1)
+SWISH_output = fread("swish_sig_DTU.csv", header=T) %>% dplyr::select(-V1)
 ```
 
 How many genes are DTU in each?

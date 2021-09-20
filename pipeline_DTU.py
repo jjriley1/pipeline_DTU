@@ -852,7 +852,6 @@ def runSwish(infile, outfile):
 def analyseDTU(infile, outfile):
     job_threads = 2
     job_memory = "32G"
-
     current_file = __file__ 
     pipeline_path = os.path.abspath(current_file)
     pipeline_directory = os.path.dirname(pipeline_path)
@@ -860,12 +859,11 @@ def analyseDTU(infile, outfile):
     Rmd_path = os.path.join(pipeline_directory, script_path)
 
     trimmed_outfile = outfile.replace(".html", ".Rmd")
-
-    copy_statement = "cp " + script_path + "compareDTU.Rmd " + trimmed_outfile 
+    copy_statement = "cp " + Rmd_path + "compareDTU.Rmd " + trimmed_outfile 
     os.system(copy_statement)
 
     run_statement = "Rscript -e 'rmarkdown::render(\"%(trimmed_outfile)s\")'"
-    P.run(run_statement, job_condaenv="R-rstudio")
+    P.run(run_statement)
 
 @follows(analyseDesignMatrix, runDEXDRIM, runSwish)
 def runDTU():
