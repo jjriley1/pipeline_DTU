@@ -73,7 +73,7 @@ condition2_files = paste0(quant_dir, "/", condition2_files)
 #create basic sample table for condition 1 with var1 set to comparison[1].
 sample_table_1 = data.frame(files=condition1_files, sample_id=condition1_filenames) %>% 
   mutate(files = as.character(condition1_files)) %>% mutate(var1 = comparison[1]) %>%
-  transmute(sample_id = sample_id,
+  transmute(names = sample_id,
             var1 = var1,
             files = files)
 
@@ -82,7 +82,7 @@ sample_table_1 = sample_table_1 %>% mutate(identifier = (str_split(sample_id, "-
 #create basic sample table for condition 2 with var1 set to comparison[2].
 sample_table_2 = data.frame(files=condition2_files, sample_id=condition2_filenames) %>% 
   mutate(files = as.character(condition2_files)) %>% mutate(var1 = comparison[2]) %>%
-  transmute(sample_id = sample_id,
+  transmute(names = sample_id,
             var1 = var1,
             files = files) 
 
