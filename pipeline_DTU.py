@@ -813,7 +813,7 @@ def analyseDesignMatrix(infile, outfile):
 @follows(analyseDesignMatrix)
 @transform("DTU.dir/*/runDRIM+DEX_*.Rmd", suffix(".Rmd"), ".html")
 def runDEXDRIM(infile, outfile):
-    job_threads = 4
+    job_threads = 2
     job_memory = "64G"
 
     statement = "Rscript -e 'rmarkdown::render(\"%(infile)s\")'"
@@ -841,7 +841,7 @@ def copySalmonQuantLocsForSwish(infile, outfile):
 @follows(analyseDesignMatrix, filterNonStrandedForSwish, copySalmonQuantLocsForSwish)
 @transform("DTU.dir/*/runSwish_*.Rmd", suffix(".Rmd"), ".html")
 def runSwish(infile, outfile):
-    job_threads = 4
+    job_threads = 2
     job_memory = "64G"
 
     statement = "Rscript -e 'rmarkdown::render(\"%(infile)s\")'"
