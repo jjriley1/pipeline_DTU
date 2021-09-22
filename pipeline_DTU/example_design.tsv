@@ -6,7 +6,7 @@
 hESC	NPC			## In this setting, the pipeline would output DTU for 3
 hESC	HSC			## comparisons. In this example, hESCvsNPC, hESCvsHSC
 hESC	ONP			## and hESCvsONP. These would be output as 3 separate
-				## folders and compiled in the final output report. 
+					## folders and compiled in the final output report. 
 
 ###################################
 ##### for designs where a covariate is to be used, specify this with X:Y for the covariate
@@ -25,7 +25,6 @@ hESC	HSC	wt:20q3		## hESC_vs_NPC_in_20q1, and hESC_vs_NPC_in_wt_vs_20q1
 hESC	ONP	wt:20q3		##
 
 ###############################################
-IMPORTANT: THE CHARACTERS USED HERE E.G. "hESC" 
-	   MUST MATCH EXACTLY (INCLUDING CASE)
-           THOSE IN THE FILE NAMES AT INPUT. 
+IMPORTANT: YOU MUST SPECIFY A REGEX FOR EACH OF THE GROUPS (I.E. hESC and NPC) IN THE "FILE_NAMING.TSV"
+			FOR INTERACTION TERMS DO THIS IN "INTERACTION_TERMS.TSV" (NOT YET IMPLEMENTED)
 ###############################################
