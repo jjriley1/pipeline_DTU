@@ -53,66 +53,43 @@ Generate sample table for tximport
 #list all salmon files in quantification directory
 
 quant_dir = "../../quantification.dir"
-all_foldernames = list.files(quant_dir)
-all_filenames = list.files(quant_dir, pattern="*.sf")
-all_foldernames = all_foldernames[!(all_foldernames %in% all_filenames)]
 
-#strip file name and apply to each item in the list
-files<-file.path(quant_dir, all_foldernames, all_filenames) 
-sample_names = sapply(all_foldernames, function(x) substr(x, 0, nchar(x)-3))
-sample_names = sapply(all_foldernames, function(x) strsplit(x, "[.]")[[1]][1])
-names(files) = sample_names
+file_namings = fread("../../file_naming.tsv", header=F)
 
-#create basic sample table
-sample_table = data.frame(files=files, sample_id=sample_names) %>% 
-  mutate(files = as.character(files))
+comparison = as.character(str_split(basename(getwd()), "_vs_")[[1]])
+file_namings = file_namings %>% filter(V1 %in% comparison)
+condition1_files = list.files("../../quantification.dir", pattern=as.character(file_namings[1,2]), recursive=T)
+condition2_files = list.files("../../quantification.dir", pattern=as.character(file_namings[2,2]), recursive=T)
 
-#determine how complex the file_naming is, i.e. 1 or 2 variables
-num_vars = length(stringr::str_split(sample_names[1], "-")[[1]]) - 2
+condition1_files = condition1_files[grepl("/", condition1_files)]
+condition2_files = condition2_files[grepl("/", condition2_files)]
 
-#create column for each variable - this varies depending whether there are 1 / 2 vars
-if(num_vars == 1){
-sample_table = sample_table %>% tidyr::separate(sample_id, c("identifier", "var1", "replicate"), remove=FALSE)
+condition1_filenames = sapply(condition1_files, function(x) str_split(substr(x, 0, nchar(x)-3),"/")[[1]][1])
+condition2_filenames = sapply(condition2_files, function(x) str_split(substr(x, 0, nchar(x)-3),"/")[[1]][1])
 
-sample_table = sample_table %>%
-  transmute(names = sample_id,
-            identifier = identifier,
-            var1 = var1,
-            replicate = replicate,
-            files = files)
-}
+condition1_files = paste0(quant_dir, "/", condition1_files)
+condition2_files = paste0(quant_dir, "/", condition2_files)
 
-#if there is a 2nd variable add it now and place it after var1
-if (num_vars == 2) {
-sample_table = sample_table %>% tidyr::separate(sample_id, c("identifier", "var1", "var2", "replicate"), remove=FALSE)
-
-sample_table = sample_table %>%
+#create basic sample table for condition 1 with var1 set to comparison[1].
+sample_table_1 = data.frame(files=condition1_files, sample_id=condition1_filenames) %>% 
+  mutate(files = as.character(condition1_files)) %>% mutate(var1 = comparison[1]) %>%
   transmute(sample_id = sample_id,
-            identifier = identifier,
             var1 = var1,
-            var2= var2,
-            replicate = replicate,
             files = files)
-}
-```
 
-Need to filter rows for those included in the variables:
-2 steps to this:
-  - If 1 variable, we need to filter rows by those which are specified in design matrix
-  e.g. if looking at hESC vs NPC, only rows for hESC and NPC should be kept, not HSCs. 
-  - If 2 variables, we need to do the above but also filter rows which are in the 
-  condition we are currently looking at:
-    + e.g. if we are looking at hESC vs NPC in mutant, we need to filter for var2==mutant,
-    if we are looking at hESC vs NPC in wt then we need to filter for var2==wt. If we are
-    looking at hESC vs NPC in mutant vs wt then keep both, but disregard other interactors
-    (in case there are more than 2 from the dataset).
-    
-```{r filter_sample_table_and_factorize}
-sample_table = sample_table %>% dplyr::filter(var1 %in% filter_by_var1) %>% mutate(var1 = as.factor(var1))
+sample_table_1 = sample_table_1 %>% mutate(identifier = (str_split(sample_id, "-")%>%unlist())[1])
 
-if (num_vars==2){
-  sample_table = sample_table %>% dplyr::filter(var2 %in% filter_by_var2) %>% mutate(var2 = as.factor(var2))
-}
+#create basic sample table for condition 2 with var1 set to comparison[2].
+sample_table_2 = data.frame(files=condition2_files, sample_id=condition2_filenames) %>% 
+  mutate(files = as.character(condition2_files)) %>% mutate(var1 = comparison[2]) %>%
+  transmute(sample_id = sample_id,
+            var1 = var1,
+            files = files) 
+
+sample_table_2 = sample_table_2 %>% mutate(identifier = (str_split(sample_id, "-")%>%unlist())[1])
+
+#merge the 2 sample tables
+sample_table = rbind(sample_table_1, sample_table_2)
 ```
 
 How many in each condition
@@ -120,8 +97,6 @@ How many in each condition
 ```{r table_of_conditions}
 table(sample_table$var1)
 ```
-
-
 
 Check files exist
 
