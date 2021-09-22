@@ -817,7 +817,7 @@ def runDEXDRIM(infile, outfile):
     job_memory = "64G"
 
     statement = "Rscript -e 'rmarkdown::render(\"%(infile)s\")'"
-    P.run(statement, job_condaenv="R-rstudio", job_memory=job_memory)
+    P.run(statement, job_memory=job_memory)
 
 @follows(analyseDesignMatrix)
 @transform("export/agg-agg-agg.gtf.gz", suffix(".gtf.gz"), "-strandedOnly.gtf")
