@@ -16,6 +16,7 @@ library(samr)
 library(qvalue)
 library(stringr)
 library(tidyr)
+library(data.table)
 ```
 
 Load in the configs / run-specific information
