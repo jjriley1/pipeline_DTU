@@ -170,10 +170,11 @@ colnames(counts)[which(names(counts) == "GENEID")] = "gene_id"
 row.names(counts) = counts$feature_id
 ```
 
-For some reason this has changed colnames from identifier-var1-replicate to identifier.var1.replicate. So lets change that back to match sample_table.
+For some reason this has changed colnames from identifier-var1-replicate to identifier.var1.replicate. So lets change both to replace all dots with dashes.
 
 ```{r rename_count_matrix_heads}
 names(counts) = stringr::str_replace_all(names(counts), "\\.", "\\-")
+sample_table = sample_table %>% mutate(sample_id = stringr::str_replace_all(sample_id, "\\.", "\\-"))
 ```
 
 Additionally, there appear to be a few MSTRG transcripts that have no associated gene... so filter those away
