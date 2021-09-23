@@ -78,7 +78,7 @@ sample_table_1 = data.frame(files=condition1_files, sample_id=condition1_filenam
             var1 = var1,
             files = files)
 
-sample_table_1 = sample_table_1 %>% mutate(identifier = (str_split(sample_id, "-")%>%unlist())[1])
+sample_table_1 = sample_table_1 %>% mutate(identifier = (str_split(names, "-")%>%unlist())[1])
 
 #create basic sample table for condition 2 with var1 set to comparison[2].
 sample_table_2 = data.frame(files=condition2_files, sample_id=condition2_filenames) %>% 
@@ -87,7 +87,7 @@ sample_table_2 = data.frame(files=condition2_files, sample_id=condition2_filenam
             var1 = var1,
             files = files) 
 
-sample_table_2 = sample_table_2 %>% mutate(identifier = (str_split(sample_id, "-")%>%unlist())[1])
+sample_table_2 = sample_table_2 %>% mutate(identifier = (str_split(names, "-")%>%unlist())[1])
 
 #merge the 2 sample tables
 sample_table = rbind(sample_table_1, sample_table_2)
