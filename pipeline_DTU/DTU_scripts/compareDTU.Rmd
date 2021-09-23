@@ -63,7 +63,7 @@ graph_df = data.frame(packages, output_n)
 graph_df %>% ggplot(aes(x=packages, y=output_n, fill=packages)) + geom_bar(stat="identity")
 ```
 
-### Major to Minor (or Viceversa) Flips
+### Summarize expression
 
 ```{r load_expression_data}
 expression_data = fread("../../expression.dir/utrons_expression.txt")
@@ -80,6 +80,11 @@ file_namings = file_namings %>% filter(V1 %in% filter_by_var1) %>% mutate(V2 = s
 sample_filter = paste0((file_namings %>% dplyr::select(V2) %>% unlist())[1],"|",(file_namings %>% dplyr::select(V2) %>% unlist())[2])
 
 expression_data = dplyr::filter(expression_data, grepl(sample_filter, Sample))
+
+condition1_vars = dplyr::filter(expression_data, grepl(file_namings[[1,2]], Sample)) %>% dplyr::select(var1) %>% distinct() %>% unlist()
+condition2_vars = dplyr::filter(expression_data, grepl(file_namings[[2,2]], Sample)) %>% dplyr::select(var1) %>% distinct() %>% unlist()
+
+expression_data = expression_data %>% mutate(var1 = ifelse(var1 %in% condition1_vars, filter_by_var1[1], filter_by_var1[2]))
 ```
 
 Summarize:
@@ -88,13 +93,10 @@ Summarize:
 expression_data_summary = expression_data %>% dplyr::group_by(transcript_id, var1) %>%
   dplyr::summarize(median.tr.expr = median(tr.expr), median.gene.expr = median(gene.expr))
 
-condition1_vars = dplyr::filter(expression_data, grepl(file_namings[[1,2]], Sample)) %>% dplyr::select(var1) %>% distinct() %>% unlist()
-condition2_vars = dplyr::filter(expression_data, grepl(file_namings[[2,2]], Sample)) %>% dplyr::select(var1) %>% distinct() %>% unlist()
-
-expression_data_summary_var1_1 = expression_data_summary %>% dplyr::filter(var1 %in% condition1_vars) %>%
+expression_data_summary_var1_1 = expression_data_summary %>% dplyr::filter(var1 == filter_by_var1[1]) %>%
   dplyr::rename(var1_1 = var1, var1_1.tr.expr = median.tr.expr, var1_1.gene.expr = median.gene.expr) %>%
   dplyr::mutate(var1_1.fract.expr = var1_1.tr.expr/var1_1.gene.expr)
-expression_data_summary_var1_2 = expression_data_summary %>% dplyr::filter(var1 %in% condition2_vars) %>%
+expression_data_summary_var1_2 = expression_data_summary %>% dplyr::filter(var1 == filter_by_var1[2]) %>%
   dplyr::rename(var1_2 = var1, var1_2.tr.expr = median.tr.expr, var1_2.gene.expr = median.gene.expr) %>%
   dplyr::mutate(var1_2.fract.expr = var1_2.tr.expr/var1_2.gene.expr)
 ```
@@ -115,7 +117,11 @@ DTU_comp$SYMBOL = mapIds(org.Hs.eg.db,
                                column="SYMBOL",
                                keytype="ENSEMBL",
                                multiVals = "first")
+
+write.csv(DTU_comp, "DTU_compiled.csv")
 ```
+
+### Major to minor (or v.v.) flips
 
 Get the major isoform  for each gene at each point of comparison, in var1_1 and var1_2
 
