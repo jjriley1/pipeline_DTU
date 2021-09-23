@@ -75,8 +75,11 @@ expression_data = expression_data %>% tidyr::separate(Sample, c("identifier", "v
 
 folder_name = basename(getwd())
 filter_by_var1 = str_split(folder_name, "_in_")[[1]][1] %>% str_split("_vs_") %>% unlist()
+file_namings = fread("../../file_naming.tsv", header=F)
+file_namings = file_namings %>% filter(V1 %in% filter_by_var1) %>% mutate(V2 = str_replace(V2, "-", "."))
+sample_filter = paste0((file_namings %>% dplyr::select(V2) %>% unlist())[1],"|",(file_namings %>% dplyr::select(V2) %>% unlist())[2])
 
-expression_data = expression_data %>% dplyr::filter(var1 %in% filter_by_var1)
+expression_data = dplyr::filter(expression_data, grepl(sample_filter, Sample))
 ```
 
 Summarize:
@@ -85,10 +88,13 @@ Summarize:
 expression_data_summary = expression_data %>% dplyr::group_by(transcript_id, var1) %>%
   dplyr::summarize(median.tr.expr = median(tr.expr), median.gene.expr = median(gene.expr))
 
-expression_data_summary_var1_1 = expression_data_summary %>% dplyr::filter(var1 == filter_by_var1[1]) %>%
+condition1_vars = dplyr::filter(expression_data, grepl(file_namings[[1,2]], Sample)) %>% dplyr::select(var1) %>% distinct() %>% unlist()
+condition2_vars = dplyr::filter(expression_data, grepl(file_namings[[2,2]], Sample)) %>% dplyr::select(var1) %>% distinct() %>% unlist()
+
+expression_data_summary_var1_1 = expression_data_summary %>% dplyr::filter(var1 %in% condition1_vars) %>%
   dplyr::rename(var1_1 = var1, var1_1.tr.expr = median.tr.expr, var1_1.gene.expr = median.gene.expr) %>%
   dplyr::mutate(var1_1.fract.expr = var1_1.tr.expr/var1_1.gene.expr)
-expression_data_summary_var1_2 = expression_data_summary %>% dplyr::filter(var1 == filter_by_var1[2]) %>%
+expression_data_summary_var1_2 = expression_data_summary %>% dplyr::filter(var1 %in% condition2_vars) %>%
   dplyr::rename(var1_2 = var1, var1_2.tr.expr = median.tr.expr, var1_2.gene.expr = median.gene.expr) %>%
   dplyr::mutate(var1_2.fract.expr = var1_2.tr.expr/var1_2.gene.expr)
 ```
