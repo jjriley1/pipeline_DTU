@@ -117,8 +117,13 @@ DTU_comp$SYMBOL = mapIds(org.Hs.eg.db,
                                column="SYMBOL",
                                keytype="ENSEMBL",
                                multiVals = "first")
+```
 
-write.csv(DTU_comp, "DTU_compiled.csv")
+The above DTU_comp contains genes that have DTU, therefore it includes some transcript isoforms within those genes which don't display DTU, for further analysis we are more interested in only the transcripts with DTU. Therefore filter for these and write out. 
+
+```{r}
+DTU_comp_sig_tx_only = DTU_comp %>% dplyr::filter(transcript_id %in% DRIM_output$txID | transcript_id %in% DEX_output$txID | transcript_id %in% SWISH_output$tx_id) 
+write.csv(DTU_comp_sig_tx_only, "DTU_comp_sig_tx_only.csv")
 ```
 
 ### Major to minor (or v.v.) flips
