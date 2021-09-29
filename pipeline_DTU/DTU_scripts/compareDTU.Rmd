@@ -119,11 +119,10 @@ DTU_comp$SYMBOL = mapIds(org.Hs.eg.db,
                                multiVals = "first")
 ```
 
-The above DTU_comp contains genes that have DTU, therefore it includes some transcript isoforms within those genes which don't display DTU, for further analysis we are more interested in only the transcripts with DTU. Therefore filter for these and write out. 
+write out. This file contains expression data for transcripts for genes where 1 or more transcript isoform shows DTU. Therefore some of the transcripts will have DTU and some won't. However, for a given gene, at least 1 transcript will show DTU. 
 
 ```{r}
-DTU_comp_utron_genes= DTU_comp %>% dplyr::filter(match_gene_id %in% combined_DTU) 
-write.csv(DTU_comp_utron_genes, "DTU_comp_utron_genes.csv")
+write.csv(DTU_comp, "DTU_comp.csv")
 ```
 
 ### Major to minor (or v.v.) flips
