@@ -32,11 +32,17 @@ How many genes are DTU in each?
 
 ```{r n_genes}
 DRIM_output_sig_genes = DRIM_output %>% dplyr::select(geneID) %>% filter(!is.na(geneID)) %>% distinct() %>% unlist()
+DRIM_output_sig_tx = DRIM_output %>% dplyr::select(txID) %>% filter(!is.na(txID)) %>% distinct() %>% unlist()
 length(DRIM_output_sig_genes)
+length(DRIM_output_sig_tx)
 DEX_output_sig_genes = DEX_output %>% dplyr::select(geneID) %>% filter(!is.na(geneID)) %>% distinct() %>% unlist()
+DEX_output_sig_tx = DEX_output %>% dplyr::select(txID) %>% filter(!is.na(txID)) %>% distinct() %>% unlist()
 length(DEX_output_sig_genes)
+length(DEX_output_sig_tx)
 SWISH_output_sig_genes = SWISH_output %>% dplyr::select(gene_id) %>% filter(!is.na(gene_id)) %>% distinct() %>% unlist()
+SWISH_output_sig_tx = SWISH_output %>% dplyr::select(tx_id) %>% filter(!is.na(tx_id)) %>% distinct() %>% unlist()
 length(SWISH_output_sig_genes)
+length(SWISH_output_sig_tx)
 ```
 
 
@@ -121,7 +127,11 @@ DTU_comp$SYMBOL = mapIds(org.Hs.eg.db,
 
 write out. This file contains expression data for transcripts for genes where 1 or more transcript isoform shows DTU. Therefore some of the transcripts will have DTU and some won't. However, for a given gene, at least 1 transcript will show DTU. 
 
+Add a boolean column for each transcript referring to whether it shows DTU, therefore we can distinguish which tx(s) are responsible for the inlusion of the gene
+
 ```{r}
+DTU_tx = c(DEX_output_sig_tx, DRIM_output_sig_tx, SWISH_output_sig_tx) %>% unique()
+DTU_comp = DTU_comp %>% mutate(sigDTU = transcript_id %in% DTU_tx)
 write.csv(DTU_comp, "DTU_comp.csv")
 ```
 
